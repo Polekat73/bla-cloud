@@ -33,6 +33,8 @@ include __DIR__ . '/partials/head.php';
   <?php if ($me): ?>
   <nav class="sidebar" aria-label="Main">
     <a class="nav-link <?= $nav === 'files' ? 'is-active' : '' ?>" href="<?= e(url('files')) ?>"><?= icon('folder') ?> My files</a>
+    <a class="nav-link <?= $nav === 'calendar' ? 'is-active' : '' ?>" href="<?= e(url('calendar')) ?>"><?= icon('calendar') ?> Calendar</a>
+    <a class="nav-link <?= $nav === 'contacts' ? 'is-active' : '' ?>" href="<?= e(url('contacts')) ?>"><?= icon('contact') ?> Contacts</a>
     <a class="nav-link <?= $nav === 'shared' ? 'is-active' : '' ?>" href="<?= e(url('shared')) ?>"><?= icon('users') ?> Shared with me</a>
     <a class="nav-link <?= $nav === 'shared-by-me' ? 'is-active' : '' ?>" href="<?= e(url('shared-by-me')) ?>"><?= icon('link') ?> Shared by me</a>
     <a class="nav-link <?= $nav === 'trash' ? 'is-active' : '' ?>" href="<?= e(url('trash')) ?>"><?= icon('bin') ?> Trash</a>
@@ -46,7 +48,7 @@ include __DIR__ . '/partials/head.php';
     <?php endif; ?>
     <div class="sidebar__soon">
       <span class="eyebrow">Coming soon</span>
-      <span>Calendar &amp; Contacts apps · Backups</span>
+      <span>Backups</span>
     </div>
     <form class="sidebar__logout" method="post" action="<?= e(url('logout')) ?>">
       <?= csrf_field() ?>

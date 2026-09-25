@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-const BLA_VERSION = '0.4.0';
+const BLA_VERSION = '0.5.0';
 const BLA_NAME    = 'BLA-Cloud';
 define('BLA_ROOT', dirname(__DIR__));
 define('BLA_APP', __DIR__);

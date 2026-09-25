@@ -242,30 +242,57 @@ final class CalendarBackend
             http_response_code(412);
             return;
         }
-        $uid = Vobject::extractUid($data) ?: $uri;
-        $etag = md5($data);
-        if ($existing) {
-            Database::run('UPDATE bla_calendar_objects SET uid = ?, etag = ?, data = ?, updated_at = ? WHERE id = ?',
-                [$uid, $etag, $data, Database::now(), $existing['id']]);
-        } else {
-            Database::run('INSERT INTO bla_calendar_objects (calendar_id, uri, uid, etag, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [$cal['id'], $uri, $uid, $etag, $data, Database::now(), Database::now()]);
-        }
-        Database::run('UPDATE bla_calendars SET ctag = ctag + 1 WHERE id = ?', [$cal['id']]);
+        $existed = self::writeObject((int) $cal['id'], $uri, $data, $etag);
         header('ETag: "' . $etag . '"');
-        http_response_code($existing ? 204 : 201);
+        http_response_code($existed ? 204 : 201);
     }
 
     private function deleteObject(array $cal, string $uri): void
     {
-        $obj = Database::one('SELECT id FROM bla_calendar_objects WHERE calendar_id = ? AND uri = ?', [$cal['id'], $uri]);
-        if (!$obj) {
+        if (!self::deleteObjectByUri((int) $cal['id'], $uri)) {
             http_response_code(404);
             return;
         }
-        Database::run('DELETE FROM bla_calendar_objects WHERE id = ?', [$obj['id']]);
-        Database::run('UPDATE bla_calendars SET ctag = ctag + 1 WHERE id = ?', [$cal['id']]);
         http_response_code(204);
+    }
+
+    /**
+     * Store one VEVENT (from CalDAV PUT or the web calendar app). $etag is filled in with the
+     * new content hash. Returns true if this replaced an existing object, false if it was new.
+     */
+    public static function writeObject(int $calendarId, string $uri, string $data, ?string &$etag = null): bool
+    {
+        $existing = Database::one('SELECT id FROM bla_calendar_objects WHERE calendar_id = ? AND uri = ?', [$calendarId, $uri]);
+        $uid = Vobject::extractUid($data) ?: $uri;
+        $etag = md5($data);
+        $parsed = Ical::parseEvent($data);
+        $startAt = $parsed ? $parsed['start']->format('Y-m-d H:i:s') : null;
+        $endAt = $parsed ? $parsed['end']->format('Y-m-d H:i:s') : null;
+        $allDay = $parsed && $parsed['allDay'] ? 1 : 0;
+        $remindAt = $parsed && $parsed['remindAt'] ? $parsed['remindAt']->format('Y-m-d H:i:s') : null;
+        if ($existing) {
+            Database::run('UPDATE bla_calendar_objects SET uid = ?, etag = ?, data = ?, updated_at = ?,
+                start_at = ?, end_at = ?, all_day = ?, remind_at = ?, reminder_sent_at = NULL WHERE id = ?',
+                [$uid, $etag, $data, Database::now(), $startAt, $endAt, $allDay, $remindAt, $existing['id']]);
+        } else {
+            Database::run('INSERT INTO bla_calendar_objects
+                (calendar_id, uri, uid, etag, data, created_at, updated_at, start_at, end_at, all_day, remind_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+                [$calendarId, $uri, $uid, $etag, $data, Database::now(), Database::now(), $startAt, $endAt, $allDay, $remindAt]);
+        }
+        Database::run('UPDATE bla_calendars SET ctag = ctag + 1 WHERE id = ?', [$calendarId]);
+        return (bool) $existing;
+    }
+
+    public static function deleteObjectByUri(int $calendarId, string $uri): bool
+    {
+        $obj = Database::one('SELECT id FROM bla_calendar_objects WHERE calendar_id = ? AND uri = ?', [$calendarId, $uri]);
+        if (!$obj) {
+            return false;
+        }
+        Database::run('DELETE FROM bla_calendar_objects WHERE id = ?', [$obj['id']]);
+        Database::run('UPDATE bla_calendars SET ctag = ctag + 1 WHERE id = ?', [$calendarId]);
+        return true;
     }
 
     // ---------- REPORT: calendar-query, calendar-multiget ----------

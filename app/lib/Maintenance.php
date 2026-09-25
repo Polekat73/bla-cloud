@@ -43,9 +43,41 @@ final class Maintenance
                 }
             }
             Database::run('DELETE FROM bla_login_attempts WHERE created_at < ?', [gmdate('Y-m-d H:i:s', time() - 86400)]);
+            self::sendDueReminders();
         } finally {
             flock($fh, LOCK_UN);
             fclose($fh);
+        }
+    }
+
+    /** Email calendar reminders that have come due (checked hourly, alongside the rest of housekeeping). */
+    private static function sendDueReminders(): void
+    {
+        if (!Mailer::enabled()) {
+            return;
+        }
+        $now = Database::now();
+        $due = Database::all(
+            'SELECT o.id, o.data, u.email, u.display_name, u.username FROM bla_calendar_objects o
+             JOIN bla_calendars c ON c.id = o.calendar_id JOIN bla_users u ON u.id = c.user_id
+             WHERE o.remind_at IS NOT NULL AND o.remind_at <= ? AND o.reminder_sent_at IS NULL AND o.start_at > ?',
+            [$now, $now]
+        );
+        foreach ($due as $row) {
+            Database::run('UPDATE bla_calendar_objects SET reminder_sent_at = ? WHERE id = ?', [$now, $row['id']]);
+            if ($row['email'] === '') {
+                continue;
+            }
+            $event = Dav\Ical::parseEvent($row['data']);
+            if (!$event) {
+                continue;
+            }
+            $when = $event['allDay'] ? $event['start']->format('l, F j') : $event['start']->format('l, F j \a\t g:ia');
+            Mailer::send($row['email'], 'Reminder: ' . $event['summary'], 'Upcoming event', array_filter([
+                $event['summary'] . ' — ' . $when,
+                $event['location'] !== '' ? 'Where: ' . $event['location'] : null,
+                $event['description'] !== '' ? $event['description'] : null,
+            ]));
         }
     }
 }

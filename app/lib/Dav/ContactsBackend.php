@@ -175,30 +175,47 @@ final class ContactsBackend
             http_response_code(412);
             return;
         }
-        $uid = Vobject::extractUid($data) ?: $uri;
-        $etag = md5($data);
-        if ($existing) {
-            Database::run('UPDATE bla_contacts SET uid = ?, etag = ?, data = ?, updated_at = ? WHERE id = ?',
-                [$uid, $etag, $data, Database::now(), $existing['id']]);
-        } else {
-            Database::run('INSERT INTO bla_contacts (addressbook_id, uri, uid, etag, data, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?)',
-                [$book['id'], $uri, $uid, $etag, $data, Database::now(), Database::now()]);
-        }
-        Database::run('UPDATE bla_addressbooks SET ctag = ctag + 1 WHERE id = ?', [$book['id']]);
+        $existed = self::writeObject((int) $book['id'], $uri, $data, $etag);
         header('ETag: "' . $etag . '"');
-        http_response_code($existing ? 204 : 201);
+        http_response_code($existed ? 204 : 201);
     }
 
     private function deleteObject(array $book, string $uri): void
     {
-        $c = Database::one('SELECT id FROM bla_contacts WHERE addressbook_id = ? AND uri = ?', [$book['id'], $uri]);
-        if (!$c) {
+        if (!self::deleteObjectByUri((int) $book['id'], $uri)) {
             http_response_code(404);
             return;
         }
-        Database::run('DELETE FROM bla_contacts WHERE id = ?', [$c['id']]);
-        Database::run('UPDATE bla_addressbooks SET ctag = ctag + 1 WHERE id = ?', [$book['id']]);
         http_response_code(204);
+    }
+
+    /** Store one vCard (from CardDAV PUT or the web contacts app). Returns true if this replaced an existing one. */
+    public static function writeObject(int $addressbookId, string $uri, string $data, ?string &$etag = null): bool
+    {
+        $existing = Database::one('SELECT id FROM bla_contacts WHERE addressbook_id = ? AND uri = ?', [$addressbookId, $uri]);
+        $uid = Vobject::extractUid($data) ?: $uri;
+        $etag = md5($data);
+        $fn = Vcard::parseContact($data)['fn'];
+        if ($existing) {
+            Database::run('UPDATE bla_contacts SET uid = ?, etag = ?, data = ?, fn = ?, updated_at = ? WHERE id = ?',
+                [$uid, $etag, $data, $fn, Database::now(), $existing['id']]);
+        } else {
+            Database::run('INSERT INTO bla_contacts (addressbook_id, uri, uid, etag, data, fn, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+                [$addressbookId, $uri, $uid, $etag, $data, $fn, Database::now(), Database::now()]);
+        }
+        Database::run('UPDATE bla_addressbooks SET ctag = ctag + 1 WHERE id = ?', [$addressbookId]);
+        return (bool) $existing;
+    }
+
+    public static function deleteObjectByUri(int $addressbookId, string $uri): bool
+    {
+        $c = Database::one('SELECT id FROM bla_contacts WHERE addressbook_id = ? AND uri = ?', [$addressbookId, $uri]);
+        if (!$c) {
+            return false;
+        }
+        Database::run('DELETE FROM bla_contacts WHERE id = ?', [$c['id']]);
+        Database::run('UPDATE bla_addressbooks SET ctag = ctag + 1 WHERE id = ?', [$addressbookId]);
+        return true;
     }
 
     private function report(array $book): void

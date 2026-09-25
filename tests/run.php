@@ -13,7 +13,11 @@ require dirname(__DIR__) . '/app/bootstrap.php';
 restore_exception_handler();
 
 use BlaCloud\AppPasswords;
+use BlaCloud\Dav\CalendarBackend;
+use BlaCloud\Dav\ContactsBackend;
+use BlaCloud\Dav\Ical;
 use BlaCloud\Dav\Provisioning;
+use BlaCloud\Dav\Vcard;
 use BlaCloud\Dav\Vobject;
 use BlaCloud\Dav\Xml;
 use BlaCloud\Request;
@@ -295,6 +299,68 @@ check('propfind parses requested prop names', Xml::propfindProps($doc) === ['{DA
 $allpropDoc = new DOMDocument();
 $allpropDoc->loadXML('<d:propfind xmlns:d="DAV:"><d:allprop/></d:propfind>');
 check('allprop means "everything" too', Xml::propfindProps($allpropDoc) === null);
+
+echo "Calendar app (iCalendar read/write)\n";
+$start = new DateTimeImmutable('2026-10-01 09:00:00', new DateTimeZone('UTC'));
+$end = new DateTimeImmutable('2026-10-01 10:00:00', new DateTimeZone('UTC'));
+$ics = Ical::buildEvent(['uid' => 'evt-1@test', 'summary' => 'Team sync', 'description' => "Line one\nLine two",
+    'location' => 'Room 5, "The Lounge"', 'allDay' => false, 'start' => $start, 'end' => $end, 'remindMinutesBefore' => 30]);
+check('built ICS has the right shape', str_contains($ics, 'BEGIN:VEVENT') && str_contains($ics, 'BEGIN:VALARM'));
+$parsed = Ical::parseEvent($ics);
+check('parsed summary round-trips', $parsed['summary'] === 'Team sync');
+check('parsed multi-line description round-trips', $parsed['description'] === "Line one\nLine two");
+check('parsed location with punctuation round-trips', $parsed['location'] === 'Room 5, "The Lounge"');
+check('parsed start round-trips', $parsed['start']->format('Y-m-d H:i:s') === '2026-10-01 09:00:00');
+check('parsed end round-trips', $parsed['end']->format('Y-m-d H:i:s') === '2026-10-01 10:00:00');
+check('reminder fires 30 minutes before start', $parsed['remindAt']->format('Y-m-d H:i:s') === '2026-10-01 08:30:00');
+check('event with no DTEND defaults to +1 hour', Ical::parseEvent(
+    "BEGIN:VEVENT\nUID:x\nDTSTART:20261001T090000Z\nSUMMARY:No end\nEND:VEVENT")['end']->format('H:i') === '10:00');
+
+$allDayIcs = Ical::buildEvent(['uid' => 'evt-2@test', 'summary' => 'Holiday', 'description' => '', 'location' => '',
+    'allDay' => true, 'start' => new DateTimeImmutable('2026-12-25', new DateTimeZone('UTC')),
+    'end' => new DateTimeImmutable('2026-12-26', new DateTimeZone('UTC')), 'remindMinutesBefore' => null]);
+$allDayParsed = Ical::parseEvent($allDayIcs);
+check('all-day event parses as all-day', $allDayParsed['allDay'] === true);
+check('all-day event has no reminder when none set', $allDayParsed['remindAt'] === null);
+check('not-iCalendar text has no VEVENT to parse', Ical::parseEvent('not an event') === null);
+
+$cal = \BlaCloud\Database::one("SELECT id FROM bla_calendars WHERE user_id = 1 AND uri = 'personal'");
+CalendarBackend::writeObject((int) $cal['id'], 'evt-1.ics', $ics);
+$row = \BlaCloud\Database::one('SELECT * FROM bla_calendar_objects WHERE calendar_id = ? AND uri = ?', [$cal['id'], 'evt-1.ics']);
+check('writeObject denormalises start/end/reminder', $row['start_at'] === '2026-10-01 09:00:00' && $row['remind_at'] === '2026-10-01 08:30:00');
+check('writeObject bumped the calendar ctag', (int) \BlaCloud\Database::one('SELECT ctag FROM bla_calendars WHERE id = ?', [$cal['id']])['ctag'] === 2);
+check('a due, unsent, future reminder is found by the reminder query', (bool) \BlaCloud\Database::one(
+    "SELECT id FROM bla_calendar_objects WHERE remind_at <= ? AND reminder_sent_at IS NULL AND start_at > ?",
+    ['2026-10-01 09:00:00', '2026-01-01 00:00:00']));
+check('deleteObjectByUri removes it and bumps ctag again', CalendarBackend::deleteObjectByUri((int) $cal['id'], 'evt-1.ics')
+    && (int) \BlaCloud\Database::one('SELECT ctag FROM bla_calendars WHERE id = ?', [$cal['id']])['ctag'] === 3);
+check('deleting a missing object returns false', CalendarBackend::deleteObjectByUri((int) $cal['id'], 'nope.ics') === false);
+
+echo "Contacts app (vCard read/write)\n";
+$vcf = Vcard::buildContact(['uid' => 'c-1@test', 'given' => 'Ada', 'family' => 'Lovelace',
+    'phones' => [['type' => 'cell', 'value' => '+1 555-0100'], ['type' => 'home', 'value' => '']],
+    'emails' => [['type' => 'work', 'value' => 'ada@example.com']],
+    'address' => ['street' => '1 Analytical Engine Way', 'city' => 'London', 'region' => '', 'postal' => 'SW1', 'country' => 'UK'],
+    'note' => "VIP\nCall first"]);
+check('built vCard has the right shape', str_contains($vcf, 'BEGIN:VCARD') && str_contains($vcf, 'FN:Ada Lovelace'));
+$c = Vcard::parseContact($vcf);
+check('parsed full name round-trips', $c['fn'] === 'Ada Lovelace');
+check('blank phone value is dropped, real one kept', count($c['phones']) === 1 && $c['phones'][0]['value'] === '+1 555-0100');
+check('email round-trips', $c['emails'][0]['value'] === 'ada@example.com');
+check('address round-trips', $c['address']['city'] === 'London' && $c['address']['country'] === 'UK');
+check('multi-line note round-trips', $c['note'] === "VIP\nCall first");
+check('no photo means null, not a broken data URI', $c['photo'] === null);
+
+$photoVcf = Vcard::buildContact(['given' => 'Grace', 'family' => 'Hopper', 'photoBase64' => base64_encode('not-really-a-jpeg'), 'photoType' => 'JPEG']);
+check('long PHOTO line gets folded under 76 octets per line', max(array_map('strlen', explode("\r\n", $photoVcf))) < 76);
+check('folded PHOTO still parses back out', str_starts_with(Vcard::parseContact($photoVcf)['photo'] ?? '', 'data:image/jpeg;base64,'));
+
+$book = \BlaCloud\Database::one("SELECT id FROM bla_addressbooks WHERE user_id = 1 AND uri = 'contacts'");
+ContactsBackend::writeObject((int) $book['id'], 'c-1.vcf', $vcf);
+check('writeObject denormalises fn for listing/search', \BlaCloud\Database::one(
+    'SELECT fn FROM bla_contacts WHERE addressbook_id = ? AND uri = ?', [$book['id'], 'c-1.vcf'])['fn'] === 'Ada Lovelace');
+check('deleteObjectByUri removes the contact', ContactsBackend::deleteObjectByUri((int) $book['id'], 'c-1.vcf')
+    && \BlaCloud\Database::one('SELECT id FROM bla_contacts WHERE addressbook_id = ? AND uri = ?', [$book['id'], 'c-1.vcf']) === null);
 
 $pdo = null;
 exec('rm -rf ' . escapeshellarg($tmp));

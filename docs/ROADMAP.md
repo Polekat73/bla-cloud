@@ -8,7 +8,7 @@ Built in stages, and each stage is tested before the next begins.
 | **2. Everyday files** | Trash bin & restore, move/copy, file versions, image thumbnails (GD/Imagick), in-browser previews (images, PDF, text, video, audio), search, zip download of folders, automatic database upgrades, background housekeeping | ✅ **Done (v0.2.0)** |
 | **3. People & sharing** | Admin user management (invite, quotas, disable, password reset), share with other users, **secure share links** (password, expiry, view/upload/drop/edit), email (SMTP) notifications | ✅ **Done (v0.3.0)** |
 | **4. Sync everywhere** | WebDAV for files (Windows/macOS/Linux, phone apps), **CalDAV/CardDAV** for calendars & contacts (iPhone, Android via DAVx5, Thunderbird, Outlook), plus app passwords for devices | ✅ **Done (v0.4.0)** — hand-written, not `sabre/dav` (kept the app dependency-free; see below) |
-| **5. Calendar & Contacts apps** | Built-in web apps for calendars (events, reminders, shared calendars) and contacts | Planned |
+| **5. Calendar & Contacts apps** | Built-in web apps for calendars (month/week/day/agenda, events, email reminders) and contacts (name, phone, email, address, photo, notes) | ✅ **Done (v0.5.0)** — no recurring events or calendar sharing yet; see below |
 | **6. Backups & updates** | Scheduled encrypted backups (local + S3-compatible), one-click restore with a tested restore drill, safe in-app updates with automatic rollback, cron with a page-visit fallback | Planned |
 | **7. Encryption at rest** | Optional libsodium file encryption with clear recovery guidance | Planned |
 | **8. Apps system** | Documented plugin structure, install/enable/disable from the admin panel | Planned |
@@ -23,3 +23,11 @@ to day. Known gaps versus a full implementation: no `sync-collection` REPORT (cl
 `getctag`, which all of the above support), and `calendar-query`/`addressbook-query` don't filter by
 time range or other criteria — they return the whole collection, which is fine at personal scale.
 DAV access is per-account only for now (no shared folders/calendars over DAV yet).
+
+**Stage 5 notes:** events and contacts are stored as plain iCalendar/vCard text (the same rows CalDAV/
+CardDAV sync), with a few denormalised columns (start/end time, reminder time, contact display name)
+kept in sync on every write so the calendar grid and contacts list don't have to re-parse everything
+on each page load. Deliberately out of scope for now, to keep this stage focused: recurring events
+(RRULE), calendar sharing with other people, and time-range filtering in CalDAV reports (a synced
+client gets the whole calendar, same as Stage 4). All times are the server's own clock — there's no
+per-user timezone setting yet.

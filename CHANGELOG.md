@@ -1,5 +1,16 @@
 # Changelog
 
+## 0.5.0 — Stage 5: Calendar & Contacts apps
+- **Calendar**: month, week, day and agenda views. Create/edit/delete events with a title, time
+  (or all-day), location and description, and an optional email reminder (5 min to 2 days before).
+  Add more calendars alongside the default one. Same data as CalDAV — a change in the web app shows
+  up in your phone's calendar and vice versa.
+- **Contacts**: a searchable list and an add/edit form covering name, multiple phone numbers and
+  emails, a postal address, a photo (auto-resized) and notes. Same data as CardDAV.
+- Reminders are emailed by the existing housekeeping job (hourly, no cron needed) — requires email
+  to be set up in Settings.
+- No recurring events and no calendar sharing yet — see docs/ROADMAP.md.
+
 ## 0.4.0 — Stage 4: Sync everywhere
 - **WebDAV**: mount your files as a network drive from Windows, macOS, Linux or a phone file app —
   browse, upload, download, rename, move, copy and delete, with folder locking so Explorer/Finder

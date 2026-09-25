@@ -109,6 +109,9 @@
 
   // Quota bars, select-on-focus, admin forms
   $$('[data-width]').forEach((el) => { el.style.width = Math.max(2, Math.min(100, +el.dataset.width)) + '%'; });
+  // CSP forbids inline style="..." attributes, so dynamic colors (calendar chips, legend dots) are set here instead.
+  $$('[data-chip-color]').forEach((el) => el.style.setProperty('--cal-color', el.dataset.chipColor));
+  $$('[data-dot-color]').forEach((el) => { el.style.background = el.dataset.dotColor; });
   $$('[data-select-on-focus]').forEach((el) => el.addEventListener('focus', () => el.select()));
   const addUser = $('[data-adduser]');
   if (addUser) {
@@ -160,6 +163,148 @@
 
   const trashRoot = $('[data-trash]');
   if (trashRoot) initSelection(trashRoot, 'ids[]');
+
+  // ---------- Calendar ----------
+  const calRoot = $('[data-calendar]');
+  if (calRoot) initCalendar(calRoot);
+
+  function initCalendar(root) {
+    const dlg = document.getElementById('dlg-event');
+    const form = $('[data-event-form]', dlg);
+    const titleEl = $('[data-event-title]', dlg);
+    const deleteBtn = $('[data-delete-event]', dlg);
+    const deleteForm = document.getElementById('form-delete-event');
+    const allDayBox = $('[data-f=all_day]', form);
+    const timeFields = $$('[data-time-field]', dlg);
+    const f = (name) => $('[data-f=' + name + ']', form);
+
+    function syncTimeFields() { timeFields.forEach((el) => { el.hidden = allDayBox.checked; }); }
+    allDayBox.addEventListener('change', syncTimeFields);
+
+    function resetForm(dateStr) {
+      form.reset();
+      f('object_id').value = '';
+      if (dateStr) { f('date').value = dateStr; f('end_date').value = dateStr; }
+      titleEl.textContent = 'New event';
+      deleteBtn.hidden = true;
+      syncTimeFields();
+    }
+    function fillForm(ds) {
+      f('object_id').value = ds.objectId;
+      f('calendar_id').value = ds.calendarId;
+      f('title').value = ds.title;
+      allDayBox.checked = ds.allDay === '1';
+      f('date').value = ds.date;
+      f('start_time').value = ds.startTime;
+      f('end_date').value = ds.endDate;
+      f('end_time').value = ds.endTime;
+      f('location').value = ds.location;
+      f('description').value = ds.description;
+      f('remind').value = ds.remind || '';
+      titleEl.textContent = 'Edit event';
+      deleteBtn.hidden = false;
+      syncTimeFields();
+    }
+
+    const newBtn = $('[data-new-event]');
+    if (newBtn) newBtn.addEventListener('click', () => resetForm(newBtn.dataset.defaultDate));
+
+    root.addEventListener('click', (e) => {
+      const addHere = e.target.closest('[data-add-here]');
+      if (addHere) {
+        resetForm(addHere.closest('[data-day]')?.dataset.date);
+        dlg.showModal();
+        return;
+      }
+      const chip = e.target.closest('[data-event]');
+      if (chip) { fillForm(chip.dataset); dlg.showModal(); }
+    });
+
+    deleteBtn.addEventListener('click', () => {
+      if (!window.confirm('Delete this event?')) return;
+      $('[data-df=calendar_id]', deleteForm).value = f('calendar_id').value;
+      $('[data-df=object_id]', deleteForm).value = f('object_id').value;
+      deleteForm.submit();
+    });
+  }
+
+  // ---------- Contacts ----------
+  const contactsRoot = $('[data-contacts]');
+  if (contactsRoot) initContacts(contactsRoot);
+
+  function initContacts(root) {
+    const dlg = document.getElementById('dlg-contact');
+    const form = $('[data-contact-form]', dlg);
+    const titleEl = $('[data-contact-title]', dlg);
+    const deleteBtn = $('[data-delete-contact]', dlg);
+    const deleteForm = document.getElementById('form-delete-contact');
+    const photoPreview = $('[data-photo-preview]', dlg);
+    const photoPlaceholder = $('[data-photo-placeholder]', dlg);
+    const removeRow = $('[data-remove-photo-row]', dlg);
+    const photoInput = $('[data-photo-input]', dlg);
+    const f = (name) => $('[data-f=' + name + ']', form);
+
+    function setPhoto(src) {
+      if (src) { photoPreview.src = src; photoPreview.hidden = false; photoPlaceholder.hidden = true; removeRow.hidden = false; }
+      else { photoPreview.hidden = true; photoPreview.removeAttribute('src'); photoPlaceholder.hidden = false; removeRow.hidden = true; }
+    }
+    photoInput.addEventListener('change', () => {
+      const file = photoInput.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.onload = () => setPhoto(reader.result);
+      reader.readAsDataURL(file);
+    });
+
+    function fillRows(selector, list) {
+      $$(selector, form).forEach((row, i) => {
+        const item = list[i] || { type: '', value: '' };
+        const sel = $('select', row);
+        sel.value = item.type || sel.options[0].value;
+        $('input', row).value = item.value || '';
+      });
+    }
+
+    function resetForm() {
+      form.reset();
+      f('id').value = '';
+      titleEl.textContent = 'New contact';
+      deleteBtn.hidden = true;
+      setPhoto(null);
+      fillRows('[data-phone-rows] > div', []);
+      fillRows('[data-email-rows] > div', []);
+    }
+    function fillForm(ds) {
+      f('id').value = ds.id;
+      f('given').value = ds.given || '';
+      f('family').value = ds.family || '';
+      f('note').value = ds.note || '';
+      f('street').value = ds.street || '';
+      f('city').value = ds.city || '';
+      f('region').value = ds.region || '';
+      f('postal').value = ds.postal || '';
+      f('country').value = ds.country || '';
+      setPhoto(ds.photo || null);
+      fillRows('[data-phone-rows] > div', JSON.parse(ds.phones || '[]'));
+      fillRows('[data-email-rows] > div', JSON.parse(ds.emails || '[]'));
+      titleEl.textContent = 'Edit contact';
+      deleteBtn.hidden = false;
+    }
+
+    const newBtn = $('[data-new-contact]');
+    if (newBtn) newBtn.addEventListener('click', resetForm);
+
+    root.addEventListener('click', (e) => {
+      const row = e.target.closest('[data-contact]');
+      if (row) { fillForm(row.dataset); dlg.showModal(); }
+    });
+
+    deleteBtn.addEventListener('click', () => {
+      if (!window.confirm('Delete this contact?')) return;
+      $('[data-df=id]', deleteForm).value = f('id').value;
+      deleteForm.submit();
+    });
+  }
 
   // ---------- Files ----------
   const files = $('[data-files]');

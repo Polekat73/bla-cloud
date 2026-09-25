@@ -535,3 +535,55 @@ tr.is-muted td { opacity: 0.55; }
 .auth__card--center .form { text-align: left; }
 .empty--drop .btn { margin-top: 0.5rem; }
 @media (max-width: 600px) { .public-meta { display: none; } }
+
+/* Calendar */
+.cal-toolbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 0.75rem; margin: 1rem 0; }
+.cal-nav { display: flex; align-items: center; gap: 0.35rem; }
+.cal-heading { margin: 0 0 0 0.4rem; font-size: 1.15rem; white-space: nowrap; }
+.cal-legend { display: flex; flex-wrap: wrap; align-items: center; gap: 0.6rem; }
+.cal-chip { display: inline-flex; align-items: center; gap: 0.4rem; font-size: 0.92rem; color: var(--muted); }
+.cal-dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.cal-grid { border: 1px solid var(--border); border-radius: var(--r-lg); overflow: hidden; background: var(--surface); }
+.cal-grid__head { display: grid; grid-template-columns: repeat(7, 1fr); background: var(--surface-2); }
+.cal-grid__head div { padding: 0.5rem; text-align: center; font-family: var(--font-display); font-size: 0.7rem; letter-spacing: 0.12em; text-transform: uppercase; color: var(--muted); }
+.cal-grid__row { display: grid; grid-template-columns: repeat(7, 1fr); }
+.cal-day { min-height: 110px; border-top: 1px solid var(--border); border-left: 1px solid var(--border); padding: 0.35rem; display: flex; flex-direction: column; gap: 0.25rem; }
+.cal-grid__row .cal-day:first-child { border-left: 0; }
+.cal-day.is-outside { background: rgba(0,0,0,.18); }
+.cal-day.is-outside .cal-day__num { color: var(--muted); }
+.cal-day.is-today { background: rgba(186,141,53,.08); }
+.cal-day__num { align-self: flex-start; border: 0; background: none; color: var(--text-strong); font-family: var(--font-display); font-size: 0.95rem; width: 26px; height: 26px; border-radius: 50%; cursor: pointer; }
+.cal-day__num:hover { background: var(--surface-3); color: var(--gold); }
+.is-today .cal-day__num { background: var(--gold); color: var(--bg); }
+.cal-day__events { display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; }
+.cal-more { font-size: 0.85rem; color: var(--muted); text-decoration: none; padding-left: 0.2rem; }
+.cal-more:hover { color: var(--gold); }
+.cal-chip-event { display: block; width: 100%; text-align: left; border: 0; border-radius: 5px; padding: 0.15rem 0.4rem; font-size: 0.85rem; line-height: 1.35;
+  background: color-mix(in srgb, var(--cal-color, var(--gold)) 22%, transparent); color: var(--text-strong); cursor: pointer;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; border-left: 3px solid var(--cal-color, var(--gold)); }
+.cal-chip-event:hover { background: color-mix(in srgb, var(--cal-color, var(--gold)) 38%, transparent); }
+.cal-chip-event__time { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 0.3rem; }
+.cal-week { display: grid; grid-template-columns: repeat(7, minmax(140px, 1fr)); gap: 0.75rem; overflow-x: auto; }
+.cal-col { border: 1px solid var(--border); border-radius: var(--r-lg); background: var(--surface); padding: 0.5rem; display: flex; flex-direction: column; gap: 0.4rem; min-height: 200px; }
+.cal-col.is-today { border-color: var(--border-strong); box-shadow: var(--glow); }
+.cal-col__head { border: 0; background: none; color: var(--text-strong); font-family: var(--font-display); font-size: 0.85rem; letter-spacing: 0.04em; text-align: left; cursor: pointer; padding: 0.2rem; }
+.cal-col__head:hover { color: var(--gold); }
+.cal-col__events { display: flex; flex-direction: column; gap: 0.25rem; }
+.cal-col__empty { margin: 0; font-size: 0.9rem; }
+.cal-agenda-list { list-style: none; margin: 0; padding: 0; display: grid; gap: 0.35rem; }
+.cal-agenda-list .cal-chip-event { padding: 0.5rem 0.7rem; font-size: 1rem; white-space: normal; }
+.cal-agenda-day { margin-bottom: 1.25rem; }
+.cal-agenda-day h3 { font-size: 1rem; margin-bottom: 0.5rem; }
+@media (max-width: 860px) { .cal-day { min-height: 70px; } .cal-heading { font-size: 1rem; } }
+
+.seg .cal-view-tab { width: auto; padding: 0 0.7rem; }
+.actions-spacer { flex: 1; }
+
+/* Contacts */
+.contact-photo-row { display: flex; align-items: center; gap: 0.9rem; }
+.contact-photo-row .avatar { flex: none; }
+.contact-photo-row .field { flex: 1; }
+.contact-row { cursor: pointer; }
+.field-legend.field-legend { margin-top: 0.4rem; }
+.avatar--md { width: 64px; height: 64px; }
+img.avatar { object-fit: cover; }

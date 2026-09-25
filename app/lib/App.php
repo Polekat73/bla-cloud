@@ -10,6 +10,8 @@ use BlaCloud\Controllers\LinkController;
 use BlaCloud\Controllers\ShareController;
 use BlaCloud\Controllers\UsersController;
 use BlaCloud\Controllers\AuthController;
+use BlaCloud\Controllers\CalendarController;
+use BlaCloud\Controllers\ContactsController;
 use BlaCloud\Controllers\DavController;
 use BlaCloud\Controllers\FilesController;
 use BlaCloud\Controllers\SettingsController;
@@ -71,6 +73,13 @@ final class App
         'sync'           => [SyncController::class, 'index'],
         'sync.apppasswords.create' => [SyncController::class, 'createAppPassword'],
         'sync.apppasswords.delete' => [SyncController::class, 'deleteAppPassword'],
+        'calendar'          => [CalendarController::class, 'index'],
+        'calendar.event.save'   => [CalendarController::class, 'saveEvent'],
+        'calendar.event.delete' => [CalendarController::class, 'deleteEvent'],
+        'calendar.new'      => [CalendarController::class, 'newCalendar'],
+        'contacts'        => [ContactsController::class, 'index'],
+        'contacts.save'   => [ContactsController::class, 'save'],
+        'contacts.delete' => [ContactsController::class, 'delete'],
     ];
 
     public static function run(): void
