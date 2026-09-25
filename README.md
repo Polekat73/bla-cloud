@@ -3,9 +3,9 @@
 **Your own private cloud, by [Best Life Apps](https://bestlifeapps.com).**
 A safe place for your files that runs on your own server, written from scratch in plain PHP. There's no Docker to set up and it works on ordinary web hosting.
 
-> **Status: Stage 3 of the roadmap (v0.3.0).** Setup wizard, secure sign-in with two-step verification, a full file manager,
-> **people management and sharing** (with other people and by public link) are done.
-> Phone/laptop sync, calendars, contacts and backups are coming next (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+> **Status: Stage 4 of the roadmap (v0.4.0).** Setup wizard, secure sign-in with two-step verification, a full file manager,
+> people management and sharing, and now **WebDAV/CalDAV/CardDAV sync** are done.
+> Calendar & contacts apps and backups are coming next (see [docs/ROADMAP.md](docs/ROADMAP.md)).
 
 ---
 
@@ -39,6 +39,9 @@ A safe place for your files that runs on your own server, written from scratch i
   - Email a link straight from the share dialog, and see how many times a link was opened
   - *Shared by me* page to review and stop any share in one click
   - Shares follow files when they're renamed or moved, and stop when the file is deleted
+- **Sync** — mount your files as a network drive (WebDAV) and sync your calendar and contacts (CalDAV/CardDAV)
+  to your phone, computer or apps like Thunderbird, Outlook or Apple Calendar. Each device gets its own
+  revocable **app password**, since sync apps can't answer a two-step verification prompt.
 - **Email** through any SMTP server (Gmail, Outlook, your host…) or the server's own mail, with branded messages
 - **Automatic upgrades.** Upload a new version over the old one and the database updates itself on the next page load.
 - **Housekeeping without cron.** Old trash, old versions and temp files are cleaned up automatically.
@@ -69,11 +72,12 @@ The full guide covers shared hosting, a VPS (Nginx/Caddy) and reverse proxies: *
 
 ```bash
 cd bla-cloud
-php -S localhost:8080
+php -S localhost:8080 router.php
 # open http://localhost:8080
 ```
 
-(The built-in PHP server is for testing only. It ignores the `.htaccess` protections.)
+(The built-in PHP server is for testing only. It ignores the `.htaccess` protections; `router.php`
+just re-creates the routing so WebDAV/CalDAV/CardDAV addresses under `/dav/` also work locally.)
 
 ## Run the tests
 

@@ -133,6 +133,29 @@ Email is used for invitations, password resets and share notifications. As an ad
 
 Then use **Send a test email** on the same page. Also set **Web address** (e.g. `https://cloud.yourdomain.com`) so links in emails point to the right place.
 
+## Sync (WebDAV/CalDAV/CardDAV)
+
+Every account has an address to mount their files as a network drive, plus a calendar and address
+book, under **Sync** in the sidebar. Since sync apps can't answer a two-step verification prompt,
+each device signs in with its own **app password** instead of the account password — create one
+per device on that page, and revoke it any time without touching your main password.
+
+- **Files (WebDAV)** — `https://your-domain.com/cloud/dav/files/USERNAME/`. Mount it in Windows
+  ("Map network drive" → "Connect to a website..."), macOS Finder (**Go → Connect to Server**), or a
+  file app on your phone (e.g. FE File Explorer, Files by Readdle).
+- **Calendar (CalDAV)** and **Contacts (CardDAV)** — Apple Calendar/Contacts, Thunderbird, and DAVx5
+  (Android) can usually auto-discover both from just the server address (`https://your-domain.com/cloud/`)
+  plus the username and app password. Apps that need the full address: see the Sync page for the
+  exact URLs.
+
+**Server config:** the Nginx and Caddy examples above already route every HTTP method (PROPFIND, PUT,
+MKCOL...) to `index.php`, so nothing extra is needed. Apache's `.htaccess` (included) adds two rules
+for `/dav/` and `/.well-known/caldav`/`carddav` — if you copied an older `.htaccess`, replace it with
+the current one.
+
+There's no built-in calendar or contacts app yet (see the roadmap) — until then, use any CalDAV/CardDAV
+app to see and edit them.
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -146,6 +169,7 @@ Then use **Send a test email** on the same page. Also set **Web address** (e.g. 
 | Test email fails | Check server, port and security match your provider. Gmail needs an App password. Some hosts block outgoing port 587, so try 465 with SSL. |
 | Locked out after many attempts | Wait 15 minutes. The block lifts automatically. |
 | Uploads stop partway | Check free disk space on the **System status** page. |
+| WebDAV/CalDAV/CardDAV app rejects the password | Use an **app password** from the Sync page, not your account password. |
 
 ## Moving or re-installing
 

@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.4.0 — Stage 4: Sync everywhere
+- **WebDAV**: mount your files as a network drive from Windows, macOS, Linux or a phone file app —
+  browse, upload, download, rename, move, copy and delete, with folder locking so Explorer/Finder
+  can save in place.
+- **CalDAV/CardDAV**: every account gets a default calendar and address book, syncable from Apple
+  Calendar/Contacts, Thunderbird, DAVx5, Outlook add-ins and other standard clients — `.well-known`
+  auto-discovery, `MKCALENDAR` to add more calendars, per-collection `getctag` change detection.
+- **App passwords** (Settings > Sync): one revocable password per device, since sync clients can't
+  answer a two-step verification prompt. Rate-limited and logged like regular sign-ins.
+- No built-in calendar/contacts *app* yet — that's Stage 5. The data and sync already work today
+  through any CalDAV/CardDAV client.
+
 ## 0.3.0 — Stage 3: People & sharing
 - **People** (admin): add people by email invitation, invite link or password. Set storage limits, the admin role, and disable, delete or reset 2FA. Quota bars and last sign-in.
 - **Forgot password** self-service by email, plus admin-created reset links.

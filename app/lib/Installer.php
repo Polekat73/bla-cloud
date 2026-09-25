@@ -207,6 +207,7 @@ final class Installer
         $pdo->prepare('INSERT INTO bla_users (username, display_name, email, password_hash, is_admin, created_at) VALUES (?, ?, ?, ?, 1, ?)')
             ->execute([$s['username'], $s['display_name'] ?: $s['username'], $s['email'], Security::hashPassword($s['password']), Database::now()]);
         $adminId = (int) $pdo->lastInsertId();
+        Dav\Provisioning::seedDefaults($adminId);
 
         // Remember the public address for links in emails (protects reset emails from spoofed Host headers).
         Settings::save(['base_url' => Settings::baseUrl()]);

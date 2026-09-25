@@ -11,7 +11,7 @@ use PDO;
  */
 final class Schema
 {
-    public const VERSION = 3;
+    public const VERSION = 4;
 
     public static function create(PDO $pdo, string $driver): void
     {
@@ -153,6 +153,89 @@ final class Schema
                 )$tail",
                 $idx . "idx_shares_owner ON bla_shares $pidx_owner",
                 $idx . 'idx_shares_recipient ON bla_shares (recipient_id)',
+            ],
+            4 => [
+                // Per-device passwords for WebDAV/CalDAV/CardDAV (they can't do 2FA prompts).
+                "CREATE TABLE IF NOT EXISTS bla_app_passwords (
+                    id $id,
+                    user_id $uid NOT NULL,
+                    label VARCHAR(128) NOT NULL DEFAULT '',
+                    password_hash VARCHAR(255) NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    last_used_at DATETIME NULL,
+                    last_used_ip VARCHAR(45) NOT NULL DEFAULT '',
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE
+                )$tail",
+                $idx . 'idx_app_passwords_user ON bla_app_passwords (user_id)',
+                // Short-lived WebDAV write locks (LOCK/UNLOCK), mainly so Windows/macOS allow saving files.
+                "CREATE TABLE IF NOT EXISTS bla_dav_locks (
+                    id $id,
+                    user_id $uid NOT NULL,
+                    path $path NOT NULL,
+                    token VARCHAR(64) NOT NULL UNIQUE,
+                    owner VARCHAR(255) NOT NULL DEFAULT '',
+                    depth VARCHAR(8) NOT NULL DEFAULT '0',
+                    expires_at DATETIME NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE
+                )$tail",
+                $idx . "idx_dav_locks_path ON bla_dav_locks $pidx",
+                // Calendars (CalDAV) and their events/todos, stored as raw iCalendar text.
+                "CREATE TABLE IF NOT EXISTS bla_calendars (
+                    id $id,
+                    user_id $uid NOT NULL,
+                    uri VARCHAR(64) NOT NULL,
+                    display_name VARCHAR(128) NOT NULL DEFAULT '',
+                    color VARCHAR(7) NOT NULL DEFAULT '#c9a227',
+                    ctag INT NOT NULL DEFAULT 1,
+                    created_at DATETIME NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE,
+                    UNIQUE (user_id, uri)
+                )$tail",
+                "CREATE TABLE IF NOT EXISTS bla_calendar_objects (
+                    id $id,
+                    calendar_id $uid NOT NULL,
+                    uri VARCHAR(255) NOT NULL,
+                    uid VARCHAR(255) NOT NULL DEFAULT '',
+                    etag VARCHAR(64) NOT NULL,
+                    data TEXT NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL,
+                    FOREIGN KEY (calendar_id) REFERENCES bla_calendars(id) ON DELETE CASCADE,
+                    UNIQUE (calendar_id, uri)
+                )$tail",
+                $idx . 'idx_calendar_objects_cal ON bla_calendar_objects (calendar_id)',
+                // Address books (CardDAV) and their contacts, stored as raw vCard text.
+                "CREATE TABLE IF NOT EXISTS bla_addressbooks (
+                    id $id,
+                    user_id $uid NOT NULL,
+                    uri VARCHAR(64) NOT NULL,
+                    display_name VARCHAR(128) NOT NULL DEFAULT '',
+                    ctag INT NOT NULL DEFAULT 1,
+                    created_at DATETIME NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE,
+                    UNIQUE (user_id, uri)
+                )$tail",
+                "CREATE TABLE IF NOT EXISTS bla_contacts (
+                    id $id,
+                    addressbook_id $uid NOT NULL,
+                    uri VARCHAR(255) NOT NULL,
+                    uid VARCHAR(255) NOT NULL DEFAULT '',
+                    etag VARCHAR(64) NOT NULL,
+                    data TEXT NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL,
+                    FOREIGN KEY (addressbook_id) REFERENCES bla_addressbooks(id) ON DELETE CASCADE,
+                    UNIQUE (addressbook_id, uri)
+                )$tail",
+                $idx . 'idx_contacts_book ON bla_contacts (addressbook_id)',
+                // Give every existing account its default calendar & address book (new ones get this at creation time).
+                "INSERT INTO bla_calendars (user_id, uri, display_name, color, ctag, created_at)
+                 SELECT id, 'personal', 'Personal', '#c9a227', 1, '" . gmdate('Y-m-d H:i:s') . "' FROM bla_users u
+                 WHERE NOT EXISTS (SELECT 1 FROM bla_calendars c WHERE c.user_id = u.id AND c.uri = 'personal')",
+                "INSERT INTO bla_addressbooks (user_id, uri, display_name, ctag, created_at)
+                 SELECT id, 'contacts', 'Contacts', 1, '" . gmdate('Y-m-d H:i:s') . "' FROM bla_users u
+                 WHERE NOT EXISTS (SELECT 1 FROM bla_addressbooks a WHERE a.user_id = u.id AND a.uri = 'contacts')",
             ],
             default => [],
         };

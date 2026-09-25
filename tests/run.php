@@ -12,6 +12,10 @@ if (PHP_SAPI !== 'cli') {
 require dirname(__DIR__) . '/app/bootstrap.php';
 restore_exception_handler();
 
+use BlaCloud\AppPasswords;
+use BlaCloud\Dav\Provisioning;
+use BlaCloud\Dav\Vobject;
+use BlaCloud\Dav\Xml;
 use BlaCloud\Request;
 use BlaCloud\Security;
 use BlaCloud\Storage;
@@ -258,6 +262,39 @@ file_put_contents($tmp . '/users/' . $newId . '/files/x.txt', 'x');
 check('deleting a user removes their data', !is_dir($tmp . '/users/' . $newId) && \BlaCloud\Users::find($newId) === null);
 [$mt, $mh] = \BlaCloud\Mailer::render('Hi <b>', ['Line & <script>'], 'Go', 'https://x.test/?a=1&b=2');
 check('email HTML is escaped', str_contains($mh, 'Line &amp; &lt;script&gt;') && str_contains($mh, 'a=1&amp;b=2') && !str_contains($mh, '<script>'));
+
+echo "Sync (WebDAV/CalDAV/CardDAV)\n";
+Provisioning::seedDefaults(1); // user 1 was inserted with raw SQL above, so it has none yet
+check('seeding gives a default calendar', \BlaCloud\Database::one(
+    "SELECT id FROM bla_calendars WHERE user_id = 1 AND uri = 'personal'") !== null);
+check('seeding gives a default address book', \BlaCloud\Database::one(
+    "SELECT id FROM bla_addressbooks WHERE user_id = 1 AND uri = 'contacts'") !== null);
+Provisioning::seedDefaults(1); // must not duplicate on a second call
+check('seeding defaults twice does not duplicate', (int) \BlaCloud\Database::one(
+    "SELECT COUNT(*) AS n FROM bla_calendars WHERE user_id = 1")['n'] === 1);
+
+[$apId, $apSecret] = AppPasswords::create(1, 'Test phone');
+check('app password verifies with the right secret', AppPasswords::verify('ben-admin-does-not-exist', $apSecret) === null);
+$_SERVER['REMOTE_ADDR'] = '198.51.100.1'; // fresh IP so earlier throttling in this run doesn't interfere
+$adminRow = \BlaCloud\Users::find(1);
+check('app password verifies for the right user', (AppPasswords::verify($adminRow['username'], $apSecret)['id'] ?? null) === 1);
+check('app password rejects the wrong secret', AppPasswords::verify($adminRow['username'], 'not-the-secret') === null);
+check('account password does not work as an app password', AppPasswords::verify($adminRow['username'], 'quiet river morning bread') === null);
+AppPasswords::revoke(1, $apId);
+check('revoked app password stops working', AppPasswords::verify($adminRow['username'], $apSecret) === null);
+check('format() groups into dashes', AppPasswords::format('abcdefgh') === 'abcd-efgh');
+
+check('UID extracted', Vobject::extractUid("BEGIN:VEVENT\nUID:abc-123\nSUMMARY:Hi\nEND:VEVENT") === 'abc-123');
+check('UID extraction handles folded lines', Vobject::extractUid("BEGIN:VEVENT\nUID:abc-\n 123\nEND:VEVENT") === 'abc-123');
+check('missing UID returns null', Vobject::extractUid("BEGIN:VEVENT\nSUMMARY:Hi\nEND:VEVENT") === null);
+
+check('propfind with no body means "everything"', Xml::propfindProps(null) === null);
+$doc = new DOMDocument();
+$doc->loadXML('<d:propfind xmlns:d="DAV:"><d:prop><d:displayname/><d:getetag/></d:prop></d:propfind>');
+check('propfind parses requested prop names', Xml::propfindProps($doc) === ['{DAV:}displayname', '{DAV:}getetag']);
+$allpropDoc = new DOMDocument();
+$allpropDoc->loadXML('<d:propfind xmlns:d="DAV:"><d:allprop/></d:propfind>');
+check('allprop means "everything" too', Xml::propfindProps($allpropDoc) === null);
 
 $pdo = null;
 exec('rm -rf ' . escapeshellarg($tmp));

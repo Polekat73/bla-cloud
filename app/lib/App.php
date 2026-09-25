@@ -10,9 +10,11 @@ use BlaCloud\Controllers\LinkController;
 use BlaCloud\Controllers\ShareController;
 use BlaCloud\Controllers\UsersController;
 use BlaCloud\Controllers\AuthController;
+use BlaCloud\Controllers\DavController;
 use BlaCloud\Controllers\FilesController;
 use BlaCloud\Controllers\SettingsController;
 use BlaCloud\Controllers\SetupController;
+use BlaCloud\Controllers\SyncController;
 use BlaCloud\Controllers\TrashController;
 
 final class App
@@ -66,6 +68,9 @@ final class App
         'shared'         => [ShareController::class, 'sharedWithMe'],
         'shared-by-me'   => [ShareController::class, 'sharedByMe'],
         's'              => [LinkController::class, 'open'],
+        'sync'           => [SyncController::class, 'index'],
+        'sync.apppasswords.create' => [SyncController::class, 'createAppPassword'],
+        'sync.apppasswords.delete' => [SyncController::class, 'deleteAppPassword'],
     ];
 
     public static function run(): void
@@ -79,6 +84,18 @@ final class App
         }
 
         Schema::ensureUpToDate();
+
+        // WebDAV/CalDAV/CardDAV: separate, stateless entry point (no cookies, HTTP Basic + app passwords).
+        $path = Request::path();
+        if ($path === '/.well-known/caldav' || $path === '/.well-known/carddav') {
+            header('Location: ' . Request::basePath() . '/dav/', true, 302);
+            return;
+        }
+        if ($path === '/dav' || str_starts_with($path, '/dav/')) {
+            (new DavController())->handle();
+            return;
+        }
+
         Session::start();
         if (random_int(1, 100) === 1) {
             Maintenance::run();

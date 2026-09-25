@@ -15,8 +15,9 @@ $labels = [
     'invite.accepted' => 'Accepted invitation', 'password.reset' => 'Reset password by email link', 'password.reset_requested' => 'Requested a password reset',
     'settings.update' => 'Changed settings', 'share.user' => 'Shared with a person', 'share.link' => 'Created a public link',
     'share.delete' => 'Stopped sharing', 'share.email' => 'Emailed a link', 'share.leave' => 'Left a share', 'share.link_unlocked' => 'Link password entered', 'upgrade.code' => 'BLA-Cloud updated', 'maintenance' => 'Automatic cleanup',
+    'apppassword.created' => 'New app password', 'apppassword.revoked' => 'App password revoked',
 ];
-$bad = ['login.failed', 'login.throttled', '2fa.failed', '2fa.disabled', 'user.delete', 'user.reset_2fa'];
+$bad = ['login.failed', 'login.throttled', '2fa.failed', '2fa.disabled', 'user.delete', 'user.reset_2fa', 'apppassword.revoked'];
 ?>
 <?php if (!$activity): ?>
   <p class="muted">No activity yet.</p>

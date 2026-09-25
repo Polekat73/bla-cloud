@@ -8,6 +8,10 @@ DirectoryIndex index.php
   RewriteRule (^|/)\.(?!well-known/) - [F,L]
   RewriteRule ^(app|config|data|tests|docs)(/|$) - [F,L]
   RewriteRule \.(sqlite|sqlite-wal|sqlite-shm|part|log|md|sh|dist|example)$ - [F,L,NC]
+
+  # WebDAV/CalDAV/CardDAV: every verb (PROPFIND, PUT, MKCOL...) goes through index.php too.
+  RewriteRule ^dav(/.*)?$ index.php [L]
+  RewriteRule ^\.well-known/(caldav|carddav)$ index.php [L]
 </IfModule>
 
 <FilesMatch "\.(sqlite|part|log|md|sh|dist|example)$">

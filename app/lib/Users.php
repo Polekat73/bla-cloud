@@ -61,12 +61,14 @@ final class Users
         if ($password !== null && ($p = Security::passwordProblem($password, $username))) {
             throw new StorageException($p);
         }
-        return Database::insert('INSERT INTO bla_users (username, display_name, email, password_hash, is_admin, quota_bytes, created_at)
+        $id = Database::insert('INSERT INTO bla_users (username, display_name, email, password_hash, is_admin, quota_bytes, created_at)
             VALUES (?, ?, ?, ?, ?, ?, ?)', [
             $username, mb_substr(trim($display), 0, 128) ?: $username, $email,
             $password === null ? self::NO_PASSWORD : Security::hashPassword($password),
             $admin ? 1 : 0, max(0, $quotaBytes), Database::now(),
         ]);
+        Dav\Provisioning::seedDefaults($id);
+        return $id;
     }
 
     public static function activeAdminCount(): int
@@ -118,7 +120,8 @@ final class Users
         self::assertNotLastAdmin($u, 'delete');
         $dir = rtrim((string) Config::get('data_dir'), '/') . '/users/' . (int) $u['id'];
         Database::run('DELETE FROM bla_shares WHERE owner_id = ? OR recipient_id = ?', [$u['id'], $u['id']]);
-        foreach (['bla_versions', 'bla_trash', 'bla_tokens', 'bla_recovery_codes'] as $t) {
+        foreach (['bla_versions', 'bla_trash', 'bla_tokens', 'bla_recovery_codes',
+                  'bla_app_passwords', 'bla_dav_locks', 'bla_calendars', 'bla_addressbooks'] as $t) {
             Database::run("DELETE FROM $t WHERE user_id = ?", [$u['id']]);
         }
         Database::run('DELETE FROM bla_users WHERE id = ?', [$u['id']]);

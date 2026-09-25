@@ -36,6 +36,7 @@ include __DIR__ . '/partials/head.php';
     <a class="nav-link <?= $nav === 'shared' ? 'is-active' : '' ?>" href="<?= e(url('shared')) ?>"><?= icon('users') ?> Shared with me</a>
     <a class="nav-link <?= $nav === 'shared-by-me' ? 'is-active' : '' ?>" href="<?= e(url('shared-by-me')) ?>"><?= icon('link') ?> Shared by me</a>
     <a class="nav-link <?= $nav === 'trash' ? 'is-active' : '' ?>" href="<?= e(url('trash')) ?>"><?= icon('bin') ?> Trash</a>
+    <a class="nav-link <?= $nav === 'sync' ? 'is-active' : '' ?>" href="<?= e(url('sync')) ?>"><?= icon('key') ?> Sync</a>
     <a class="nav-link <?= $nav === 'settings' ? 'is-active' : '' ?>" href="<?= e(url('settings')) ?>"><?= icon('shield') ?> Security</a>
     <?php if ((int) $me['is_admin'] === 1): ?>
       <span class="nav-group">Administration</span>
@@ -45,7 +46,7 @@ include __DIR__ . '/partials/head.php';
     <?php endif; ?>
     <div class="sidebar__soon">
       <span class="eyebrow">Coming soon</span>
-      <span>Sync · Calendar · Contacts · Backups</span>
+      <span>Calendar &amp; Contacts apps · Backups</span>
     </div>
     <form class="sidebar__logout" method="post" action="<?= e(url('logout')) ?>">
       <?= csrf_field() ?>
