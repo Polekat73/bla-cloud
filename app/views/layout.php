@@ -46,6 +46,7 @@ include __DIR__ . '/partials/head.php';
       <a class="nav-link <?= $nav === 'admin.settings' ? 'is-active' : '' ?>" href="<?= e(url('admin.settings')) ?>"><?= icon('gear') ?> Settings</a>
       <a class="nav-link <?= $nav === 'admin' ? 'is-active' : '' ?>" href="<?= e(url('admin')) ?>"><?= icon('gauge') ?> System status</a>
       <a class="nav-link <?= $nav === 'admin.backups' ? 'is-active' : '' ?>" href="<?= e(url('admin.backups')) ?>"><?= icon('archive') ?> Backups</a>
+      <a class="nav-link <?= $nav === 'admin.encryption' ? 'is-active' : '' ?>" href="<?= e(url('admin.encryption')) ?>"><?= icon('lock') ?> Encryption</a>
     <?php endif; ?>
     <form class="sidebar__logout" method="post" action="<?= e(url('logout')) ?>">
       <?= csrf_field() ?>

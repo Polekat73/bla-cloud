@@ -15,6 +15,8 @@ restore_exception_handler();
 use BlaCloud\AppPasswords;
 use BlaCloud\Backup;
 use BlaCloud\Database;
+use BlaCloud\Encryption;
+use BlaCloud\FileCrypto;
 use BlaCloud\Dav\CalendarBackend;
 use BlaCloud\Dav\ContactsBackend;
 use BlaCloud\Dav\Ical;
@@ -429,6 +431,59 @@ try {
         @unlink($realConfigPath);
     }
 }
+
+echo "Encryption at rest\n";
+check('encryption starts off', !Encryption::enabled() && !Encryption::hasKey());
+check('pause()/resume() without a key first is rejected', throws(fn () => Encryption::resume()));
+check('enable() rejects a short passphrase', throws(fn () => Encryption::enable('short')));
+Encryption::enable('a proper file encryption passphrase');
+check('enable() turns it on', Encryption::enabled() && Encryption::hasKey());
+
+// FileCrypto: the size header lets a caller learn the plaintext size without decrypting.
+$cryptTmp = sys_get_temp_dir() . '/bla-crypt-test-' . bin2hex(random_bytes(4));
+mkdir($cryptTmp);
+$plain = str_repeat('x', 12345);
+file_put_contents($cryptTmp . '/p.txt', $plain);
+FileCrypto::encryptFile($cryptTmp . '/p.txt', $cryptTmp . '/p.enc', 'pw', 'MYMAGIC1');
+check('hasMagic finds the marker', FileCrypto::hasMagic($cryptTmp . '/p.enc', 'MYMAGIC1'));
+check('hasMagic is false for a plain file', !FileCrypto::hasMagic($cryptTmp . '/p.txt', 'MYMAGIC1'));
+check('plaintextSize reads the size without a passphrase', FileCrypto::plaintextSize($cryptTmp . '/p.enc', 'MYMAGIC1') === 12345);
+check('plaintextSize is null for a plain file', FileCrypto::plaintextSize($cryptTmp . '/p.txt', 'MYMAGIC1') === null);
+exec('rm -rf ' . escapeshellarg($cryptTmp));
+
+// Uploading through the normal Storage path while encryption is on: the file on disk must be
+// unreadable as plain bytes, but resolvePlaintext() must hand back exactly what was uploaded.
+$secretUp = function (string $content) use ($fs, $tmp) {
+    $t = tempnam($tmp, 'up');
+    file_put_contents($t, $content);
+    return $fs->receiveChunk(bin2hex(random_bytes(10)), 0, $t, true, '', 'secret.bin', strlen($content));
+};
+$secretUp('secret family photos data, not plain on disk');
+$encAbs = $F('/secret.bin');
+check('the file on disk is not the plaintext', file_get_contents($encAbs) !== 'secret family photos data, not plain on disk');
+check('Encryption recognises it as encrypted', Encryption::isEncryptedFile($encAbs));
+check('contentSize() reports the real (plaintext) size', Encryption::contentSize($encAbs) === strlen('secret family photos data, not plain on disk'));
+$resolved = Encryption::resolvePlaintext($encAbs);
+check('resolvePlaintext() decrypts back to the original bytes', file_get_contents($resolved) === 'secret family photos data, not plain on disk');
+check('resolvePlaintext() of a plain file returns the same path unchanged', Encryption::resolvePlaintext($F('/a.txt')) === $F('/a.txt'));
+
+// Pausing stops new files from being encrypted, but doesn't touch what's already there.
+Encryption::pause();
+check('pause() turns enabled() off but keeps the key', !Encryption::enabled() && Encryption::hasKey());
+$secretUp('now plain again, encryption is paused');
+check('a file saved while paused is plain on disk', file_get_contents($F('/secret.bin')) === 'now plain again, encryption is paused');
+Encryption::resume();
+check('resume() turns it back on without needing the passphrase again', Encryption::enabled());
+
+// Bulk migration over whatever's on disk for every account right now.
+$r = Encryption::encryptExistingFiles();
+check('encryptExistingFiles() converts the plain ones and skips the rest', $r['converted'] >= 1 && $r['errors'] === []);
+check('files folder is now fully encrypted', Encryption::isEncryptedFile($F('/secret.bin')) && Encryption::isEncryptedFile($F('/a.txt')));
+$r2 = Encryption::encryptExistingFiles();
+check('running it again converts nothing new', $r2['converted'] === 0 && $r2['skipped'] > 0);
+$r3 = Encryption::decryptExistingFiles();
+check('decryptExistingFiles() puts everything back to plain', $r3['converted'] > 0
+    && !Encryption::isEncryptedFile($F('/secret.bin')) && file_get_contents($F('/a.txt')) === 'x');
 
 $pdo = null;
 exec('rm -rf ' . escapeshellarg($tmp));

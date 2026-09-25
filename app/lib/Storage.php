@@ -182,7 +182,7 @@ final class Storage
             'name'  => $name,
             'path'  => $rel,
             'dir'   => $isDir,
-            'size'  => $isDir ? null : $f->getSize(),
+            'size'  => $isDir ? null : Encryption::contentSize($f->getPathname()),
             'mtime' => $f->getMTime(),
             'type'  => $isDir ? 'folder' : self::kind($name),
         ];
@@ -255,7 +255,7 @@ final class Storage
         $it = new \RecursiveIteratorIterator(new \RecursiveDirectoryIterator($dir, \FilesystemIterator::SKIP_DOTS));
         foreach ($it as $f) {
             if ($f->isFile() && !$f->isLink()) {
-                $total += $f->getSize();
+                $total += Encryption::contentSize($f->getPathname());
             }
         }
         return $total;
@@ -478,10 +478,7 @@ final class Storage
             $rel = self::join($dirRel, $this->uniqueName($dirRel, $fileName));
             $dest = $this->abs($rel, false);
         }
-        if (!@rename($part, $dest)) {
-            @unlink($part);
-            throw new StorageException('Could not finish the upload.');
-        }
+        Encryption::finalizeWrite($part, $dest);
         @chmod($dest, 0640);
         return ['path' => $rel, 'replaced' => $replaced];
     }

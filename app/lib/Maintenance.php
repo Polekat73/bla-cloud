@@ -45,6 +45,7 @@ final class Maintenance
             Database::run('DELETE FROM bla_login_attempts WHERE created_at < ?', [gmdate('Y-m-d H:i:s', time() - 86400)]);
             self::sendDueReminders();
             Backup::maybeRun();
+            Encryption::cleanupScratch();
         } finally {
             flock($fh, LOCK_UN);
             fclose($fh);

@@ -67,7 +67,7 @@ final class FileSender
         header('Content-Type: application/octet-stream');
         header('Content-Disposition: ' . self::attachmentHeader($name));
         header('Cache-Control: private, no-store');
-        self::stream($abs, $mtime);
+        self::stream($abs, $mtime, Encryption::resolvePlaintext($abs));
     }
 
     /** Show a file inside the page (viewer). Unknown types fall back to download. */
@@ -92,7 +92,7 @@ final class FileSender
         header('Content-Type: ' . $type . (str_starts_with($type, 'text/') ? '; charset=utf-8' : ''));
         header('Content-Disposition: inline; filename*=UTF-8\'\'' . rawurlencode($name));
         header('Cache-Control: private, max-age=0, must-revalidate');
-        self::stream($abs, (int) filemtime($abs));
+        self::stream($abs, (int) filemtime($abs), Encryption::resolvePlaintext($abs));
     }
 
     public static function thumbnail(string $abs, string $mime): never
@@ -107,10 +107,16 @@ final class FileSender
         exit;
     }
 
-    /** Stream a file with support for a single byte range (HTTP 206). */
-    private static function stream(string $abs, ?int $mtime): never
+    /**
+     * Stream a file with support for a single byte range (HTTP 206). $abs identifies the file
+     * (for the ETag) — $bytesPath is what's actually read, which differs from $abs when $abs is
+     * encrypted at rest: Encryption::resolvePlaintext() will have decrypted it to a temp file first,
+     * since Range needs to seek within the real (plaintext) bytes, not the ciphertext.
+     */
+    private static function stream(string $abs, ?int $mtime, ?string $bytesPath = null): never
     {
-        $size = (int) filesize($abs);
+        $bytesPath ??= $abs;
+        $size = (int) filesize($bytesPath);
         $start = 0;
         $end = $size - 1;
         header('Accept-Ranges: bytes');
@@ -142,7 +148,7 @@ final class FileSender
             exit;
         }
         @set_time_limit(0);
-        $fh = fopen($abs, 'rb');
+        $fh = fopen($bytesPath, 'rb');
         if ($fh) {
             fseek($fh, $start);
             $left = $length;

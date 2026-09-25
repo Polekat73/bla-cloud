@@ -11,7 +11,7 @@ Built in stages, and each stage is tested before the next begins.
 | **5. Calendar & Contacts apps** | Built-in web apps for calendars (month/week/day/agenda, events, email reminders) and contacts (name, phone, email, address, photo, notes) | ✅ **Done (v0.5.0)** — no recurring events or calendar sharing yet; see below |
 | **6. Backups** | Scheduled encrypted backups, verify ("restore drill"), one-click restore, cron with a page-visit fallback | ✅ **Done (v0.6.0)** — local destination only, no S3 yet; see below |
 | **7. Safe in-app updates** | Check for and apply new versions from inside the app, with automatic rollback if something goes wrong | Planned — needs an actual release channel to check against first |
-| **8. Encryption at rest** | Optional libsodium file encryption with clear recovery guidance | Planned |
+| **8. Encryption at rest** | Optional libsodium file encryption with clear recovery guidance | ✅ **Done (v0.7.0)**, built ahead of Stage 7 (no release channel exists yet for safe updates) — file contents only, local files area only; see below |
 | **9. Apps system** | Documented plugin structure, install/enable/disable from the admin panel | Planned |
 | **Later** | Video calls (WebRTC with PHP signaling + optional TURN server), document editor, desktop & phone apps | Architecture reserved |
 
@@ -40,3 +40,17 @@ that only matters for a backup file alone (off the server) being unreadable with
 someone has the live server they have the data anyway. Restoring in place assumes the same database
 driver (SQLite-to-SQLite or MySQL-to-MySQL); moving to a brand-new server that isn't running yet is
 a manual process — see docs/INSTALL.md.
+
+**Stage 8 notes:** encrypts file *contents* only — file and folder names, sizes-as-metadata-in-the-
+database (there isn't any; sizes are read from the file itself) stay as they are on disk, so this
+protects against someone reading file contents, not against someone learning your folder structure
+from filenames alone. Whether a file is encrypted is told apart by an 8-byte marker at the start of
+the file, not a database flag, so it can never drift out of sync with what's actually on disk.
+Turning it on doesn't retroactively encrypt existing files — that's the separate "Encrypt existing
+files now" action, scoped to the main files area only (not trash or version history yet). There's
+no seekable/chunked cipher: code that needs real bytes (HTTP Range requests for video/audio
+scrubbing, thumbnails, zip downloads) decrypts a temporary full copy first, which is slower for
+very large encrypted files than for plain ones — a deliberate simplicity-over-performance trade-off,
+since a subtle bug in a custom seekable cipher risks actual data loss. There's no passphrase
+rotation: changing it means turning encryption off (decrypting everything back to plain) and back on
+with a new one.

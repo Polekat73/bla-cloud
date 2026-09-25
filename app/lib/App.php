@@ -7,6 +7,7 @@ use BlaCloud\Controllers\AccountController;
 use BlaCloud\Controllers\AdminController;
 use BlaCloud\Controllers\AdminSettingsController;
 use BlaCloud\Controllers\BackupController;
+use BlaCloud\Controllers\EncryptionController;
 use BlaCloud\Controllers\LinkController;
 use BlaCloud\Controllers\ShareController;
 use BlaCloud\Controllers\UsersController;
@@ -64,6 +65,12 @@ final class App
         'admin.backups.verify'   => [BackupController::class, 'verify'],
         'admin.backups.restore'  => [BackupController::class, 'restore'],
         'admin.backups.delete'   => [BackupController::class, 'delete'],
+        'admin.encryption'          => [EncryptionController::class, 'index'],
+        'admin.encryption.enable'   => [EncryptionController::class, 'enable'],
+        'admin.encryption.pause'    => [EncryptionController::class, 'pause'],
+        'admin.encryption.resume'   => [EncryptionController::class, 'resume'],
+        'admin.encryption.migrate-encrypt' => [EncryptionController::class, 'migrateEncrypt'],
+        'admin.encryption.migrate-decrypt' => [EncryptionController::class, 'migrateDecrypt'],
         'users'          => [UsersController::class, 'index'],
         'users.create'   => [UsersController::class, 'create'],
         'users.action'   => [UsersController::class, 'action'],

@@ -40,6 +40,9 @@ final class Settings
         'backup_frequency'     => 'daily', // daily | weekly
         'backup_retention'     => 7,
         'backup_passphrase_enc' => '',    // encrypted; the plain passphrase is never stored
+        // Encryption at rest
+        'encrypt_enabled'         => false, // encrypt new files from now on
+        'encrypt_passphrase_enc'  => '',    // encrypted; the plain passphrase is never stored
     ];
 
     private static ?array $cache = null;

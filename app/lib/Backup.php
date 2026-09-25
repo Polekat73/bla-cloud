@@ -446,89 +446,15 @@ final class Backup
         return $zipPath;
     }
 
-    // ---------- Encryption: libsodium secretstream, chunked so file size isn't limited by memory ----------
+    // ---------- Encryption: see FileCrypto.php (shared with Encryption.php's per-file encryption) ----------
 
     public static function encryptFile(string $inPath, string $outPath, string $passphrase): void
     {
-        $salt = random_bytes(SODIUM_CRYPTO_PWHASH_SALTBYTES);
-        $key = self::deriveKey($passphrase, $salt);
-        [$stream, $header] = sodium_crypto_secretstream_xchacha20poly1305_init_push($key);
-        $in = fopen($inPath, 'rb');
-        $out = fopen($outPath, 'wb');
-        if (!$in || !$out) {
-            throw new StorageException('Could not open the backup file for writing.');
-        }
-        fwrite($out, self::MAGIC);
-        fwrite($out, $salt);
-        fwrite($out, $header);
-        while (true) {
-            $chunk = fread($in, self::CHUNK);
-            $eof = feof($in);
-            $tag = $eof ? SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_TAG_FINAL : SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_TAG_MESSAGE;
-            $enc = sodium_crypto_secretstream_xchacha20poly1305_push($stream, (string) $chunk, '', $tag);
-            fwrite($out, pack('N', strlen($enc)));
-            fwrite($out, $enc);
-            if ($eof) {
-                break;
-            }
-        }
-        fclose($in);
-        fclose($out);
-        sodium_memzero($key);
+        FileCrypto::encryptFile($inPath, $outPath, $passphrase, self::MAGIC);
     }
 
     public static function decryptFile(string $inPath, string $outPath, string $passphrase): void
     {
-        $in = fopen($inPath, 'rb');
-        if (!$in) {
-            throw new StorageException('That backup file is missing.');
-        }
-        if (fread($in, strlen(self::MAGIC)) !== self::MAGIC) {
-            fclose($in);
-            throw new StorageException('That is not a BLA-Cloud backup file.');
-        }
-        $salt = fread($in, SODIUM_CRYPTO_PWHASH_SALTBYTES);
-        $header = fread($in, SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_HEADERBYTES);
-        $key = self::deriveKey($passphrase, $salt);
-        $stream = sodium_crypto_secretstream_xchacha20poly1305_init_pull($header, $key);
-        $out = fopen($outPath, 'wb');
-        if (!$out) {
-            fclose($in);
-            throw new StorageException('Could not write the decrypted file.');
-        }
-        while (!feof($in)) {
-            $lenBin = fread($in, 4);
-            if ($lenBin === false || strlen($lenBin) < 4) {
-                break;
-            }
-            $len = unpack('N', $lenBin)[1];
-            $enc = fread($in, $len);
-            $res = $enc === false ? false : sodium_crypto_secretstream_xchacha20poly1305_pull($stream, $enc, '');
-            if ($res === false) {
-                fclose($in);
-                fclose($out);
-                @unlink($outPath);
-                sodium_memzero($key);
-                throw new StorageException('Wrong passphrase, or this backup file is corrupted.');
-            }
-            [$plain, $tag] = $res;
-            fwrite($out, $plain);
-            if ($tag === SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_TAG_FINAL) {
-                break;
-            }
-        }
-        fclose($in);
-        fclose($out);
-        sodium_memzero($key);
-    }
-
-    private static function deriveKey(string $passphrase, string $salt): string
-    {
-        return sodium_crypto_pwhash(
-            SODIUM_CRYPTO_SECRETSTREAM_XCHACHA20POLY1305_KEYBYTES,
-            $passphrase, $salt,
-            SODIUM_CRYPTO_PWHASH_OPSLIMIT_MODERATE, SODIUM_CRYPTO_PWHASH_MEMLIMIT_MODERATE,
-            SODIUM_CRYPTO_PWHASH_ALG_ARGON2ID13
-        );
+        FileCrypto::decryptFile($inPath, $outPath, $passphrase, self::MAGIC);
     }
 }

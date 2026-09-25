@@ -5,6 +5,7 @@ namespace BlaCloud\Dav;
 
 use BlaCloud\Controllers\DavController;
 use BlaCloud\Database;
+use BlaCloud\Encryption;
 use BlaCloud\Storage;
 use BlaCloud\StorageException;
 use BlaCloud\Versions;
@@ -115,7 +116,7 @@ final class FilesBackend
         if ($isDir) {
             $props['{DAV:}supported-report-set'] = new Raw('');
         } else {
-            $size = (int) filesize($abs);
+            $size = Encryption::contentSize($abs);
             $props['{DAV:}getcontentlength'] = (string) $size;
             $props['{DAV:}getcontenttype']   = self::mimeType($abs);
             $props['{DAV:}getetag']          = self::etag($abs);
@@ -168,10 +169,10 @@ final class FilesBackend
             http_response_code(304);
             return;
         }
-        header('Content-Length: ' . filesize($abs));
+        header('Content-Length: ' . Encryption::contentSize($abs));
         http_response_code(200);
         if (!$headOnly) {
-            readfile($abs);
+            readfile(Encryption::resolvePlaintext($abs));
         }
     }
 
@@ -238,10 +239,11 @@ final class FilesBackend
             (new Versions($this->fs))->saveCurrent($rel);
         }
         $dest = $this->fs->abs($rel, false);
-        if (!@rename($tmp, $dest)) {
-            @unlink($tmp);
+        try {
+            Encryption::finalizeWrite($tmp, $dest);
+        } catch (StorageException $e) {
             http_response_code(500);
-            echo "Could not save the file.\n";
+            echo $e->getMessage() . "\n";
             return;
         }
         @chmod($dest, 0640);

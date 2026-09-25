@@ -3,9 +3,10 @@
 **Your own private cloud, by [Best Life Apps](https://bestlifeapps.com).**
 A safe place for your files that runs on your own server, written from scratch in plain PHP. There's no Docker to set up and it works on ordinary web hosting.
 
-> **Status: Stage 6 of the roadmap (v0.6.0).** Setup wizard, secure sign-in with two-step verification, a full file manager,
-> people management and sharing, WebDAV/CalDAV/CardDAV sync, built-in Calendar & Contacts apps, and now **encrypted backups**
-> are done. Safe in-app updates are coming next (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+> **Status: Stage 8 of the roadmap (v0.7.0).** Setup wizard, secure sign-in with two-step verification, a full file manager,
+> people management and sharing, WebDAV/CalDAV/CardDAV sync, built-in Calendar & Contacts apps, encrypted backups, and now
+> **encryption at rest** are done. Safe in-app updates are next, once there's a release channel to check against
+> (see [docs/ROADMAP.md](docs/ROADMAP.md)).
 
 ---
 
@@ -48,6 +49,8 @@ A safe place for your files that runs on your own server, written from scratch i
 - **Email** through any SMTP server (Gmail, Outlook, your host…) or the server's own mail, with branded messages
 - **Encrypted backups.** Scheduled snapshots of your database and files, encrypted with a passphrase
   only you know, with a "verify" restore drill and one-click restore.
+- **Encryption at rest.** Optionally encrypt file contents on disk under a passphrase separate from
+  your account password — protects against anyone who only gets the raw data folder.
 - **Automatic upgrades.** Upload a new version over the old one and the database updates itself on the next page load.
 - **Housekeeping without cron.** Old trash, old versions, temp files and scheduled backups are handled
   automatically — or wire up real cron (`tools/cron.php`) on hosts that allow it.

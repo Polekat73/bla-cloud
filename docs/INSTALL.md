@@ -205,6 +205,24 @@ running app yet to click "Restore" in:
 5. Visit the site. If you did skip the wizard in step 1, it now finds an existing install and just
    signs you in.
 
+## Encryption at rest
+
+Turn it on under **Encryption** in the admin sidebar and set a passphrase (or let one be
+generated). This is separate from your account password and from the app's own encryption key —
+write it down somewhere safe, since there's no way to recover it if it's lost, and no way to
+change it later short of decrypting everything and re-encrypting with a new one.
+
+It only affects files saved from that point on. Existing files stay exactly as they are until you
+run **Encrypt existing files now**, which needs backups set up first (a safety backup is taken
+automatically before it starts). The reverse, **Decrypt existing files**, works the same way.
+
+A few things worth knowing:
+- Only file *contents* are encrypted — file and folder names are not.
+- It only covers the main files area for now, not trash or version history.
+- Because there's no seekable cipher, a large encrypted video's Range requests (skipping ahead
+  while playing) and thumbnail generation decrypt a temporary full copy first — noticeably slower
+  than for a plain file of the same size. Turn it off if that matters more than the protection.
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -220,6 +238,7 @@ running app yet to click "Restore" in:
 | Uploads stop partway | Check free disk space on the **System status** page. |
 | WebDAV/CalDAV/CardDAV app rejects the password | Use an **app password** from the Sync page, not your account password. |
 | "Wrong passphrase, or this backup file is corrupted" | Double-check the backup passphrase (Backups page) — it's separate from your account password, and rotating it doesn't change what older backups need. |
+| A photo/video is slow to open, or "Encrypt/Decrypt existing files" is greyed out | The first is expected for large files with encryption on (see Encryption at rest above). The second needs backups set up first (Backups page) — it takes a safety backup automatically before the bulk change. |
 
 ## Moving or re-installing
 

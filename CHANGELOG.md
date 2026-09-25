@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.7.0 — Stage 8: Encryption at rest
+- **Encryption at rest** for file contents (Administration > Encryption): a separate passphrase
+  (not your account password, not the app's own encryption key) protects files from anyone who
+  only gets the raw data folder — a stolen disk, a misconfigured off-site copy, a curious host.
+  File and folder *names* aren't encrypted, only the bytes inside each file.
+- Turning it on only affects files saved from then on; "Encrypt existing files now" walks and
+  converts everything already there (main files area only, for now), with a safety backup taken
+  first. The reverse ("Decrypt existing files") is also available.
+- Fully transparent to the rest of the app: downloads, previews, thumbnails, zip downloads and
+  WebDAV all decrypt on the fly. File sizes shown everywhere (file list, storage used, WebDAV)
+  are the real content size, not the (slightly larger) size on disk.
+- Deliberately simple by design, not a seekable cipher: an HTTP Range request (video/audio
+  scrubbing) or a thumbnail on a large encrypted file decrypts a temporary full copy first rather
+  than seeking into ciphertext directly — slower for very large files, but far less code to get
+  wrong. Trash and version history aren't covered by the bulk migration yet. See docs/ROADMAP.md.
+
 ## 0.6.0 — Stage 6: Backups
 - **Encrypted backups**: the database, config and everyone's files, zipped and encrypted
   (libsodium secretstream) under a separate passphrase you set — not your account password, not
