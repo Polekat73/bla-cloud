@@ -9,9 +9,10 @@ Built in stages, and each stage is tested before the next begins.
 | **3. People & sharing** | Admin user management (invite, quotas, disable, password reset), share with other users, **secure share links** (password, expiry, view/upload/drop/edit), email (SMTP) notifications | ✅ **Done (v0.3.0)** |
 | **4. Sync everywhere** | WebDAV for files (Windows/macOS/Linux, phone apps), **CalDAV/CardDAV** for calendars & contacts (iPhone, Android via DAVx5, Thunderbird, Outlook), plus app passwords for devices | ✅ **Done (v0.4.0)** — hand-written, not `sabre/dav` (kept the app dependency-free; see below) |
 | **5. Calendar & Contacts apps** | Built-in web apps for calendars (month/week/day/agenda, events, email reminders) and contacts (name, phone, email, address, photo, notes) | ✅ **Done (v0.5.0)** — no recurring events or calendar sharing yet; see below |
-| **6. Backups & updates** | Scheduled encrypted backups (local + S3-compatible), one-click restore with a tested restore drill, safe in-app updates with automatic rollback, cron with a page-visit fallback | Planned |
-| **7. Encryption at rest** | Optional libsodium file encryption with clear recovery guidance | Planned |
-| **8. Apps system** | Documented plugin structure, install/enable/disable from the admin panel | Planned |
+| **6. Backups** | Scheduled encrypted backups, verify ("restore drill"), one-click restore, cron with a page-visit fallback | ✅ **Done (v0.6.0)** — local destination only, no S3 yet; see below |
+| **7. Safe in-app updates** | Check for and apply new versions from inside the app, with automatic rollback if something goes wrong | Planned — needs an actual release channel to check against first |
+| **8. Encryption at rest** | Optional libsodium file encryption with clear recovery guidance | Planned |
+| **9. Apps system** | Documented plugin structure, install/enable/disable from the admin panel | Planned |
 | **Later** | Video calls (WebRTC with PHP signaling + optional TURN server), document editor, desktop & phone apps | Architecture reserved |
 
 Before real-world use (after Stage 3–4): an independent security review.
@@ -31,3 +32,11 @@ on each page load. Deliberately out of scope for now, to keep this stage focused
 (RRULE), calendar sharing with other people, and time-range filtering in CalDAV reports (a synced
 client gets the whole calendar, same as Stage 4). All times are the server's own clock — there's no
 per-user timezone setting yet.
+
+**Stage 6 notes:** backups go to a local folder only — S3/remote destinations weren't built this
+pass, to keep scope focused on getting local backup/verify/restore right first. The backup
+passphrase is stored encrypted under the app's own key, so scheduled backups can run unattended;
+that only matters for a backup file alone (off the server) being unreadable without it — if
+someone has the live server they have the data anyway. Restoring in place assumes the same database
+driver (SQLite-to-SQLite or MySQL-to-MySQL); moving to a brand-new server that isn't running yet is
+a manual process — see docs/INSTALL.md.

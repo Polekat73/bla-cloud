@@ -13,6 +13,8 @@ require dirname(__DIR__) . '/app/bootstrap.php';
 restore_exception_handler();
 
 use BlaCloud\AppPasswords;
+use BlaCloud\Backup;
+use BlaCloud\Database;
 use BlaCloud\Dav\CalendarBackend;
 use BlaCloud\Dav\ContactsBackend;
 use BlaCloud\Dav\Ical;
@@ -361,6 +363,72 @@ check('writeObject denormalises fn for listing/search', \BlaCloud\Database::one(
     'SELECT fn FROM bla_contacts WHERE addressbook_id = ? AND uri = ?', [$book['id'], 'c-1.vcf'])['fn'] === 'Ada Lovelace');
 check('deleteObjectByUri removes the contact', ContactsBackend::deleteObjectByUri((int) $book['id'], 'c-1.vcf')
     && \BlaCloud\Database::one('SELECT id FROM bla_contacts WHERE addressbook_id = ? AND uri = ?', [$book['id'], 'c-1.vcf']) === null);
+
+echo "Backups\n";
+$encTmp = sys_get_temp_dir() . '/bla-enc-test-' . bin2hex(random_bytes(4));
+mkdir($encTmp);
+file_put_contents($encTmp . '/plain.txt', str_repeat('The quick brown fox jumps over the lazy dog. ', 100_000)); // ~4.6MB, spans several chunks
+Backup::encryptFile($encTmp . '/plain.txt', $encTmp . '/enc.bin', 'correct horse battery staple');
+Backup::decryptFile($encTmp . '/enc.bin', $encTmp . '/roundtrip.txt', 'correct horse battery staple');
+check('encrypt/decrypt round-trips a multi-chunk file exactly', hash_file('sha256', $encTmp . '/plain.txt') === hash_file('sha256', $encTmp . '/roundtrip.txt'));
+check('wrong passphrase is rejected', throws(fn () => Backup::decryptFile($encTmp . '/enc.bin', $encTmp . '/bad.txt', 'wrong passphrase entirely')));
+file_put_contents($encTmp . '/notabackup.bin', random_bytes(64));
+check('a random file is rejected as not a backup', throws(fn () => Backup::decryptFile($encTmp . '/notabackup.bin', $encTmp . '/x.txt', 'anything')));
+exec('rm -rf ' . escapeshellarg($encTmp));
+
+// Backup::run() zips config/config.php by its real on-disk path (Config::path() isn't affected by the
+// test's injected config array), so give it a throwaway one here and put back whatever was there before.
+$realConfigPath = dirname(__DIR__) . '/config/config.php';
+$hadRealConfig = is_file($realConfigPath);
+$savedConfig = $hadRealConfig ? file_get_contents($realConfigPath) : null;
+if (!$hadRealConfig) {
+    file_put_contents($realConfigPath, "<?php\nreturn [];\n");
+}
+try {
+    $backupDir = $tmp . '/backups';
+    check('enable() rejects a short passphrase', throws(fn () => Backup::enable($backupDir, 'daily', 7, 'short')));
+    Backup::enable($backupDir, 'daily', 3, 'a proper backup passphrase');
+    check('enable() creates the folder', is_dir($backupDir));
+    check('backups report enabled once configured', Backup::enabled());
+
+    $r1 = Backup::run('manual');
+    check('run() reports ok and a filename', $r1['ok'] === true && $r1['filename'] !== '');
+    check('run() writes the encrypted file to disk', is_file($backupDir . '/' . $r1['filename']));
+    check('run() records a row', count(Backup::list()) === 1);
+
+    $v = Backup::verify((int) Backup::list()[0]['id'], 'a proper backup passphrase');
+    check('verify() succeeds with the right passphrase', $v['ok'] === true);
+    check('verify() fails with the wrong passphrase', throws(fn () => Backup::verify((int) Backup::list()[0]['id'], 'not it')));
+
+    Backup::run('manual');
+    Backup::run('manual');
+    Backup::run('manual');
+    check('prune keeps only the newest N backups', count(Backup::list()) === 3);
+
+    // Restore round-trip: change a row, restore from an earlier backup, confirm the change is undone.
+    Database::run("UPDATE bla_users SET display_name = 'Changed after backup' WHERE id = 1");
+    $toRestore = (int) Backup::list()[array_key_last(Backup::list())]['id']; // oldest of the kept ones
+    Backup::restore($toRestore, 'a proper backup passphrase');
+    $after = Database::one('SELECT display_name FROM bla_users WHERE id = 1');
+    check('restore() puts the database back', $after !== null && $after['display_name'] !== 'Changed after backup');
+    check('restore() makes its own safety backup first', (bool) Database::one("SELECT id FROM bla_backups WHERE kind = 'safety'"));
+
+    check('rotatePassphrase() rejects a short one', throws(fn () => Backup::rotatePassphrase('short')));
+    Backup::rotatePassphrase('a brand new passphrase');
+    check('old backups need the old passphrase after rotating', throws(fn () => Backup::verify($toRestore, 'a brand new passphrase')));
+
+    $countBefore = count(Backup::list());
+    $victim = Database::one('SELECT filename FROM bla_backups WHERE id = ?', [$toRestore]);
+    Backup::deleteFile($toRestore);
+    check('deleteFile() removes the row and the file', count(Backup::list()) === $countBefore - 1
+        && $victim !== null && !is_file($backupDir . '/' . $victim['filename']));
+} finally {
+    if ($hadRealConfig) {
+        file_put_contents($realConfigPath, $savedConfig);
+    } else {
+        @unlink($realConfigPath);
+    }
+}
 
 $pdo = null;
 exec('rm -rf ' . escapeshellarg($tmp));

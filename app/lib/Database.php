@@ -39,6 +39,17 @@ final class Database
         return self::$pdo;
     }
 
+    /**
+     * Drop the current connection so the next call to pdo() reconnects from scratch. Needed after
+     * swapping the underlying SQLite file out from under an already-open connection (Backup::restore()):
+     * on POSIX, a rename doesn't affect an already-open file descriptor, so without this the rest of
+     * the request would keep silently reading and writing the old, by-then-unlinked file.
+     */
+    public static function disconnect(): void
+    {
+        self::$pdo = null;
+    }
+
     public static function driver(): string
     {
         return (string) Config::get('db.driver', 'sqlite');

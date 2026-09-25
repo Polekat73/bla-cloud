@@ -34,6 +34,12 @@ final class Settings
         'smtp_pass'            => '',     // encrypted
         // General
         'base_url'             => '',     // e.g. https://cloud.example.com — used in emails
+        // Backups
+        'backup_enabled'       => false,
+        'backup_dir'           => '',
+        'backup_frequency'     => 'daily', // daily | weekly
+        'backup_retention'     => 7,
+        'backup_passphrase_enc' => '',    // encrypted; the plain passphrase is never stored
     ];
 
     private static ?array $cache = null;

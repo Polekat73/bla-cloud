@@ -6,7 +6,7 @@ DirectoryIndex index.php
   RewriteEngine On
   # Block hidden files and internal folders even if their own .htaccess is ignored
   RewriteRule (^|/)\.(?!well-known/) - [F,L]
-  RewriteRule ^(app|config|data|tests|docs)(/|$) - [F,L]
+  RewriteRule ^(app|config|data|tests|docs|tools)(/|$) - [F,L]
   RewriteRule \.(sqlite|sqlite-wal|sqlite-shm|part|log|md|sh|dist|example)$ - [F,L,NC]
 
   # WebDAV/CalDAV/CardDAV: every verb (PROPFIND, PUT, MKCOL...) goes through index.php too.

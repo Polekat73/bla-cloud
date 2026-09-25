@@ -59,7 +59,7 @@ server {
     client_max_body_size 64M;
 
     # Never serve internal folders or hidden files
-    location ~ ^/(app|config|data|tests|docs)(/|$) { deny all; return 404; }
+    location ~ ^/(app|config|data|tests|docs|tools)(/|$) { deny all; return 404; }
     location ~ /\.(?!well-known) { deny all; return 404; }
     location ~ \.(sqlite|md|part|log)$ { deny all; return 404; }
 
@@ -84,7 +84,7 @@ server { listen 80; server_name cloud.example.com; return 301 https://$host$requ
 ```caddy
 cloud.example.com {
     root * /var/www/bla-cloud
-    @blocked path /app/* /config/* /data/* /tests/* /docs/* /.* *.sqlite *.md
+    @blocked path /app/* /config/* /data/* /tests/* /docs/* /tools/* /.* *.sqlite *.md
     respond @blocked 404
     request_body { max_size 64MB }
     php_fastcgi unix//run/php/php8.3-fpm.sock
@@ -156,6 +156,55 @@ the current one.
 There's no built-in calendar or contacts app yet (see the roadmap) — until then, use any CalDAV/CardDAV
 app to see and edit them.
 
+## Backups
+
+Turn them on under **Backups** in the admin sidebar: pick a folder (ideally outside both the
+website folder and the data folder — a sibling folder, or a mounted network drive), how often
+(daily/weekly) and how many to keep, and set a **passphrase**. That passphrase is separate from
+your account password and from the app's own encryption key: write it down somewhere safe, because
+it's the only way to restore a backup, and BLA-Cloud never stores it in a readable form.
+
+**Reliable scheduling with real cron.** By default, a scheduled backup runs as a side effect of
+someone visiting the site (like the rest of the housekeeping) — fine for an active site, less
+reliable for one nobody visits for a day or two. If your host allows cron jobs, wire one up instead:
+
+```bash
+crontab -e
+# runs every 15 minutes; each job checks whether a backup is actually due and exits quickly if not
+0,15,30,45 * * * * php /path/to/bla-cloud/tools/cron.php
+```
+
+**Verify** decrypts a backup and checks it's intact (including opening a SQLite snapshot and
+counting accounts) without touching anything live — a good habit after first setting backups up,
+and occasionally after.
+
+**Restore** (in place, on this same server) replaces the database and everyone's files with a
+backup's contents. It saves whatever was there first as its own "pre-restore safety" backup, so a
+restore can itself be undone. It expects the backup to come from an install using the same database
+type (SQLite or MySQL) as this one.
+
+**Moving to a brand-new server** (this one is gone entirely) is a manual process, since there's no
+running app yet to click "Restore" in:
+
+1. Install BLA-Cloud fresh on the new server (through the setup wizard) — or skip the wizard,
+   see step 3.
+2. Get a copy of the backup file onto the new server.
+3. From a terminal on the new server, decrypt and extract it:
+   ```bash
+   php -r '
+   require "/path/to/bla-cloud/app/bootstrap.php";
+   BlaCloud\Backup::decryptFile("/path/to/the/backup/file.bcbackup", "/tmp/restored.zip", "your passphrase");
+   (new ZipArchive())->open("/tmp/restored.zip") && (new ZipArchive())->extractTo("/tmp/restored");
+   '
+   ```
+   This gives you `/tmp/restored/config.php`, `/tmp/restored/database/` and `/tmp/restored/users/`.
+4. Put `config.php` in place at `config/config.php` (it has the original `app_key`, so 2FA secrets
+   and stored SMTP passwords keep working), the database file/dump where your `db` config in it
+   expects (SQLite: copy the `.sqlite` file over; MySQL: `mysql yourdb < database/database.sql`),
+   and `users/` inside your data folder.
+5. Visit the site. If you did skip the wizard in step 1, it now finds an existing install and just
+   signs you in.
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -170,6 +219,7 @@ app to see and edit them.
 | Locked out after many attempts | Wait 15 minutes. The block lifts automatically. |
 | Uploads stop partway | Check free disk space on the **System status** page. |
 | WebDAV/CalDAV/CardDAV app rejects the password | Use an **app password** from the Sync page, not your account password. |
+| "Wrong passphrase, or this backup file is corrupted" | Double-check the backup passphrase (Backups page) — it's separate from your account password, and rotating it doesn't change what older backups need. |
 
 ## Moving or re-installing
 

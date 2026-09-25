@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.6.0 — Stage 6: Backups
+- **Encrypted backups**: the database, config and everyone's files, zipped and encrypted
+  (libsodium secretstream) under a separate passphrase you set — not your account password, not
+  the app's own encryption key, so a backup is still restorable even if the server itself is lost.
+- Scheduled daily or weekly, with a configurable number kept; runs as a side effect of the site
+  being visited (like other housekeeping), or reliably via the new `tools/cron.php` on hosts that
+  allow real cron.
+- **Verify** ("restore drill"): decrypts and sanity-checks a backup — including opening a SQLite
+  snapshot and counting accounts — without touching anything live.
+- **Restore**: replaces the database and files with a backup's contents, in place, after typing a
+  confirmation phrase. Takes its own safety backup of the current state first, so a restore can
+  itself be undone.
+- Download any backup file to keep an off-site copy.
+- No S3/remote destinations and no self-updating yet — see docs/ROADMAP.md.
+
 ## 0.5.0 — Stage 5: Calendar & Contacts apps
 - **Calendar**: month, week, day and agenda views. Create/edit/delete events with a title, time
   (or all-day), location and description, and an optional email reminder (5 min to 2 days before).

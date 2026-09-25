@@ -232,6 +232,21 @@
   const contactsRoot = $('[data-contacts]');
   if (contactsRoot) initContacts(contactsRoot);
 
+  // ---------- Backups ----------
+  const backupsRoot = $('[data-backups]');
+  if (backupsRoot) initBackups(backupsRoot);
+
+  function initBackups(root) {
+    root.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-backup]');
+      if (!b) return;
+      const dlg = document.getElementById(b.dataset.action === 'restore' ? 'dlg-restore-backup' : 'dlg-verify-backup');
+      $('[data-f=id]', dlg).value = b.dataset.id;
+      $$('[data-backup-name]', dlg).forEach((el) => { el.textContent = '"' + b.dataset.name + '"'; });
+      dlg.showModal();
+    });
+  }
+
   function initContacts(root) {
     const dlg = document.getElementById('dlg-contact');
     const form = $('[data-contact-form]', dlg);

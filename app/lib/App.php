@@ -6,6 +6,7 @@ namespace BlaCloud;
 use BlaCloud\Controllers\AccountController;
 use BlaCloud\Controllers\AdminController;
 use BlaCloud\Controllers\AdminSettingsController;
+use BlaCloud\Controllers\BackupController;
 use BlaCloud\Controllers\LinkController;
 use BlaCloud\Controllers\ShareController;
 use BlaCloud\Controllers\UsersController;
@@ -54,6 +55,15 @@ final class App
         'admin'          => [AdminController::class, 'status'],
         'admin.settings' => [AdminSettingsController::class, 'index'],
         'admin.testmail' => [AdminSettingsController::class, 'testMail'],
+        'admin.backups'          => [BackupController::class, 'index'],
+        'admin.backups.enable'   => [BackupController::class, 'enable'],
+        'admin.backups.disable'  => [BackupController::class, 'disable'],
+        'admin.backups.rotate'   => [BackupController::class, 'rotatePassphrase'],
+        'admin.backups.run'      => [BackupController::class, 'runNow'],
+        'admin.backups.download' => [BackupController::class, 'download'],
+        'admin.backups.verify'   => [BackupController::class, 'verify'],
+        'admin.backups.restore'  => [BackupController::class, 'restore'],
+        'admin.backups.delete'   => [BackupController::class, 'delete'],
         'users'          => [UsersController::class, 'index'],
         'users.create'   => [UsersController::class, 'create'],
         'users.action'   => [UsersController::class, 'action'],

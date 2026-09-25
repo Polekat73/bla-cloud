@@ -11,7 +11,7 @@ use PDO;
  */
 final class Schema
 {
-    public const VERSION = 5;
+    public const VERSION = 6;
 
     public static function create(PDO $pdo, string $driver): void
     {
@@ -277,6 +277,20 @@ final class Schema
                 // Denormalised from the raw vCard text, so the contacts list can sort/search without parsing.
                 "ALTER TABLE bla_contacts ADD COLUMN fn VARCHAR(255) NOT NULL DEFAULT ''",
                 $idx . 'idx_contacts_fn ON bla_contacts (addressbook_id, fn)',
+            ],
+            6 => [
+                // Encrypted backup archives (see app/lib/Backup.php). The passphrase and settings live
+                // in bla_meta's 'settings' blob alongside everything else Settings.php manages.
+                "CREATE TABLE IF NOT EXISTS bla_backups (
+                    id $id,
+                    filename VARCHAR(255) NOT NULL DEFAULT '',
+                    kind VARCHAR(16) NOT NULL DEFAULT 'manual',
+                    size_bytes BIGINT NOT NULL DEFAULT 0,
+                    status VARCHAR(16) NOT NULL DEFAULT 'ok',
+                    error VARCHAR(512) NOT NULL DEFAULT '',
+                    created_at DATETIME NOT NULL
+                )$tail",
+                $idx . 'idx_backups_created ON bla_backups (created_at)',
             ],
             default => [],
         };

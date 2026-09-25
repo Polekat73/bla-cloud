@@ -3,9 +3,9 @@
 **Your own private cloud, by [Best Life Apps](https://bestlifeapps.com).**
 A safe place for your files that runs on your own server, written from scratch in plain PHP. There's no Docker to set up and it works on ordinary web hosting.
 
-> **Status: Stage 5 of the roadmap (v0.5.0).** Setup wizard, secure sign-in with two-step verification, a full file manager,
-> people management and sharing, WebDAV/CalDAV/CardDAV sync, and now built-in **Calendar & Contacts apps** are done.
-> Backups are coming next (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+> **Status: Stage 6 of the roadmap (v0.6.0).** Setup wizard, secure sign-in with two-step verification, a full file manager,
+> people management and sharing, WebDAV/CalDAV/CardDAV sync, built-in Calendar & Contacts apps, and now **encrypted backups**
+> are done. Safe in-app updates are coming next (see [docs/ROADMAP.md](docs/ROADMAP.md)).
 
 ---
 
@@ -46,8 +46,11 @@ A safe place for your files that runs on your own server, written from scratch i
   to your phone, computer or apps like Thunderbird, Outlook or Apple Calendar/Contacts. Each device gets
   its own revocable **app password**, since sync apps can't answer a two-step verification prompt.
 - **Email** through any SMTP server (Gmail, Outlook, your host…) or the server's own mail, with branded messages
+- **Encrypted backups.** Scheduled snapshots of your database and files, encrypted with a passphrase
+  only you know, with a "verify" restore drill and one-click restore.
 - **Automatic upgrades.** Upload a new version over the old one and the database updates itself on the next page load.
-- **Housekeeping without cron.** Old trash, old versions and temp files are cleaned up automatically.
+- **Housekeeping without cron.** Old trash, old versions, temp files and scheduled backups are handled
+  automatically — or wire up real cron (`tools/cron.php`) on hosts that allow it.
 - **Security activity log.** You can see who signed in, from where, and what changed.
 - **System status page** for admins: server health, disk space, database, and warnings.
 - **Best Life Apps look and feel** throughout. Fonts are served from your own server, so nothing loads from Google.
