@@ -1,0 +1,14 @@
+# Created by the setup wizard — never commit (contains your encryption key)
+/config/config.php
+/config/*.tmp-*
+
+# User data (fallback location)
+/data/*
+!/data/.htaccess
+
+# OS / editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.log

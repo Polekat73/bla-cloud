@@ -1,0 +1,32 @@
+# BLA-Cloud — Apache settings (works on most shared hosting)
+Options -Indexes -MultiViews
+DirectoryIndex index.php
+
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  # Block hidden files and internal folders even if their own .htaccess is ignored
+  RewriteRule (^|/)\.(?!well-known/) - [F,L]
+  RewriteRule ^(app|config|data|tests|docs)(/|$) - [F,L]
+  RewriteRule \.(sqlite|sqlite-wal|sqlite-shm|part|log|md|sh|dist|example)$ - [F,L,NC]
+</IfModule>
+
+<FilesMatch "\.(sqlite|part|log|md|sh|dist|example)$">
+  <IfModule mod_authz_core.c>
+    Require all denied
+  </IfModule>
+</FilesMatch>
+
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+  Header always set Referrer-Policy "no-referrer"
+  <FilesMatch "\.(css|js|woff2|webp|png)$">
+    Header set Cache-Control "public, max-age=2592000"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_php.c>
+  php_value upload_max_filesize 64M
+  php_value post_max_size 70M
+  php_value max_execution_time 300
+  php_flag expose_php off
+</IfModule>
