@@ -66,20 +66,28 @@ final class Maintenance
             [$now, $now]
         );
         foreach ($due as $row) {
-            Database::run('UPDATE bla_calendar_objects SET reminder_sent_at = ? WHERE id = ?', [$now, $row['id']]);
+            // Marked sent only once the email actually goes out — a transient send failure (SMTP
+            // briefly down, etc.) leaves reminder_sent_at NULL so the next hourly pass retries it.
             if ($row['email'] === '') {
+                Database::run('UPDATE bla_calendar_objects SET reminder_sent_at = ? WHERE id = ?', [$now, $row['id']]);
                 continue;
             }
             $event = Dav\Ical::parseEvent($row['data']);
             if (!$event) {
+                Database::run('UPDATE bla_calendar_objects SET reminder_sent_at = ? WHERE id = ?', [$now, $row['id']]);
                 continue;
             }
             $when = $event['allDay'] ? $event['start']->format('l, F j') : $event['start']->format('l, F j \a\t g:ia');
-            Mailer::send($row['email'], 'Reminder: ' . $event['summary'], 'Upcoming event', array_filter([
+            $error = Mailer::send($row['email'], 'Reminder: ' . $event['summary'], 'Upcoming event', array_filter([
                 $event['summary'] . ' — ' . $when,
                 $event['location'] !== '' ? 'Where: ' . $event['location'] : null,
                 $event['description'] !== '' ? $event['description'] : null,
             ]));
+            if ($error === null) {
+                Database::run('UPDATE bla_calendar_objects SET reminder_sent_at = ? WHERE id = ?', [$now, $row['id']]);
+            } else {
+                error_log('[BLA-Cloud] reminder email for calendar object ' . $row['id'] . ' failed: ' . $error);
+            }
         }
     }
 }

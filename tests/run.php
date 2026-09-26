@@ -367,6 +367,19 @@ check('writeObject denormalises fn for listing/search', \BlaCloud\Database::one(
 check('deleteObjectByUri removes the contact', ContactsBackend::deleteObjectByUri((int) $book['id'], 'c-1.vcf')
     && \BlaCloud\Database::one('SELECT id FROM bla_contacts WHERE addressbook_id = ? AND uri = ?', [$book['id'], 'c-1.vcf']) === null);
 
+// Same LIKE query ContactsController::index() runs, exercised directly against SQLite (the default
+// driver) — SQLite's LIKE has no default escape character, so a query without ESCAPE silently makes
+// the \_ / \% escaping below into a no-op and '_'/'%' in a name behave as wildcards.
+ContactsBackend::writeObject((int) $book['id'], 'ob.vcf', Vcard::buildContact(['given' => "O_Brien", 'family' => '']));
+ContactsBackend::writeObject((int) $book['id'], 'os.vcf', Vcard::buildContact(['given' => 'OxBrien', 'family' => '']));
+$likeSearch = fn (string $q) => \BlaCloud\Database::all(
+    "SELECT fn FROM bla_contacts WHERE addressbook_id = ? AND fn LIKE ? ESCAPE '\\' ORDER BY fn",
+    [$book['id'], '%' . str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $q) . '%']
+);
+check('literal underscore in search matches only the literal name', array_column($likeSearch('O_Brien'), 'fn') === ['O_Brien']);
+ContactsBackend::deleteObjectByUri((int) $book['id'], 'ob.vcf');
+ContactsBackend::deleteObjectByUri((int) $book['id'], 'os.vcf');
+
 echo "Backups\n";
 $encTmp = sys_get_temp_dir() . '/bla-enc-test-' . bin2hex(random_bytes(4));
 mkdir($encTmp);
@@ -415,6 +428,8 @@ try {
     $after = Database::one('SELECT display_name FROM bla_users WHERE id = 1');
     check('restore() puts the database back', $after !== null && $after['display_name'] !== 'Changed after backup');
     check('restore() makes its own safety backup first', (bool) Database::one("SELECT id FROM bla_backups WHERE kind = 'safety'"));
+    check('restore() leaves no stray .pre-restore folder behind', glob($tmp . '/users.pre-restore-*') === []);
+    check('restore() brings the files back too', file_get_contents($F('/a.txt')) === 'x');
 
     check('rotatePassphrase() rejects a short one', throws(fn () => Backup::rotatePassphrase('short')));
     Backup::rotatePassphrase('a brand new passphrase');

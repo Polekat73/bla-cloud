@@ -288,11 +288,21 @@ final class Backup
                 self::replaceMysql($dbFile);
             }
 
+            // Move the live files out of the way (a rename, not a delete) rather than clearing the
+            // folder up front — if the copy below is interrupted (time limit, disk full), the
+            // original is still sitting right there under its .pre-restore name, recoverable with a
+            // plain rename back, no need to fall through to decrypting the safety backup.
             $usersDir = rtrim((string) Config::get('data_dir'), '/') . '/users';
-            Storage::removeTree($usersDir);
+            $preRestoreDir = $usersDir . '.pre-restore-' . time();
+            if (is_dir($usersDir) && !@rename($usersDir, $preRestoreDir)) {
+                throw new StorageException('Could not move the current files out of the way to restore.');
+            }
             @mkdir($usersDir, 0750, true);
             if (is_dir($extractDir . '/users')) {
                 self::copyTree($extractDir . '/users', $usersDir);
+            }
+            if (is_dir($preRestoreDir)) {
+                Storage::removeTree($preRestoreDir);
             }
 
             // Re-register the safety backup in the now-restored database (see the comment above).

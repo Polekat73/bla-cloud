@@ -35,7 +35,7 @@ final class ContactsController
         $book = $this->book((int) $u['id']);
         $q = trim(Request::get('q'));
         $rows = $q !== ''
-            ? Database::all('SELECT * FROM bla_contacts WHERE addressbook_id = ? AND fn LIKE ? ORDER BY fn', [$book['id'], '%' . str_replace(['%', '_'], ['\%', '\_'], $q) . '%'])
+            ? Database::all("SELECT * FROM bla_contacts WHERE addressbook_id = ? AND fn LIKE ? ESCAPE '\\' ORDER BY fn", [$book['id'], '%' . str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $q) . '%'])
             : Database::all('SELECT * FROM bla_contacts WHERE addressbook_id = ? ORDER BY fn', [$book['id']]);
         $contacts = array_map(static fn ($r) => $r + Vcard::parseContact($r['data']), $rows);
 
