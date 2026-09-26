@@ -13,6 +13,7 @@ require dirname(__DIR__) . '/app/bootstrap.php';
 restore_exception_handler();
 
 use BlaCloud\AppPasswords;
+use BlaCloud\Apps;
 use BlaCloud\Backup;
 use BlaCloud\Database;
 use BlaCloud\Encryption;
@@ -484,6 +485,40 @@ check('running it again converts nothing new', $r2['converted'] === 0 && $r2['sk
 $r3 = Encryption::decryptExistingFiles();
 check('decryptExistingFiles() puts everything back to plain', $r3['converted'] > 0
     && !Encryption::isEncryptedFile($F('/secret.bin')) && file_get_contents($F('/a.txt')) === 'x');
+
+echo "Apps (plugin framework)\n";
+Apps::resetCache();
+$allApps = Apps::all();
+check('discovers the calendar app', isset($allApps['calendar']) && $allApps['calendar']['name'] === 'Calendar');
+check('discovers the contacts app', isset($allApps['contacts']) && $allApps['contacts']['name'] === 'Contacts');
+check('both enabled by default', Apps::isEnabled('calendar') && Apps::isEnabled('contacts'));
+check('unknown app is not enabled', !Apps::isEnabled('nope'));
+check('routes() includes both apps', isset(Apps::routes()['calendar']) && isset(Apps::routes()['contacts.save']));
+$navRoutes = array_column(Apps::navItems(), 'route');
+check('navItems() includes both apps', in_array('calendar', $navRoutes, true) && in_array('contacts', $navRoutes, true));
+
+Apps::setEnabled('calendar', false);
+Apps::resetCache();
+check('disabling persists', !Apps::isEnabled('calendar') && Apps::isEnabled('contacts'));
+check('disabled app drops out of routes()', !isset(Apps::routes()['calendar']) && isset(Apps::routes()['contacts']));
+check('disabled app drops out of navItems()', !in_array('calendar', array_column(Apps::navItems(), 'route'), true));
+
+Apps::setEnabled('calendar', true);
+Apps::resetCache();
+check('re-enabling persists', Apps::isEnabled('calendar'));
+check('setEnabled() on an unknown app throws', throws(fn () => Apps::setEnabled('nope', true)));
+
+$badAppDir = dirname(__DIR__) . '/app/apps/__test_bad__';
+mkdir($badAppDir);
+file_put_contents($badAppDir . '/manifest.php', "<?php\nreturn ['id' => '__test_bad__', 'name' => 'Bad'];\n"); // missing 'routes'
+Apps::resetCache();
+try {
+    check('a manifest missing required keys is skipped, not fatal', !isset(Apps::all()['__test_bad__']));
+} finally {
+    unlink($badAppDir . '/manifest.php');
+    rmdir($badAppDir);
+    Apps::resetCache();
+}
 
 $pdo = null;
 exec('rm -rf ' . escapeshellarg($tmp));

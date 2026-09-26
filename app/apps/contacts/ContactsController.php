@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace BlaCloud\Controllers;
+namespace BlaCloud\Apps\Contacts;
 
 use BlaCloud\Audit;
 use BlaCloud\Auth;
@@ -45,7 +45,7 @@ final class ContactsController
             $open += Vcard::parseContact($open['data']);
         }
 
-        View::render('contacts/index', [
+        View::renderApp(__DIR__, 'index', [
             'title' => 'Contacts', 'nav' => 'contacts', 'contacts' => $contacts, 'q' => $q, 'open' => $open,
         ]);
     }

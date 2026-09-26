@@ -21,9 +21,10 @@ $labels = [
     'backup.deleted' => 'Backup deleted', 'backup.passphrase_rotated' => 'New backup passphrase set',
     'encryption.enabled' => 'Encryption turned on', 'encryption.paused' => 'Encryption turned off',
     'encryption.migrated_encrypt' => 'Encrypted existing files', 'encryption.migrated_decrypt' => 'Decrypted existing files',
+    'apps.enabled' => 'App enabled', 'apps.disabled' => 'App disabled',
 ];
 $bad = ['login.failed', 'login.throttled', '2fa.failed', '2fa.disabled', 'user.delete', 'user.reset_2fa', 'apppassword.revoked',
-    'backup.failed', 'backup.disabled', 'encryption.paused'];
+    'backup.failed', 'backup.disabled', 'encryption.paused', 'apps.disabled'];
 ?>
 <?php if (!$activity): ?>
   <p class="muted">No activity yet.</p>

@@ -33,8 +33,9 @@ include __DIR__ . '/partials/head.php';
   <?php if ($me): ?>
   <nav class="sidebar" aria-label="Main">
     <a class="nav-link <?= $nav === 'files' ? 'is-active' : '' ?>" href="<?= e(url('files')) ?>"><?= icon('folder') ?> My files</a>
-    <a class="nav-link <?= $nav === 'calendar' ? 'is-active' : '' ?>" href="<?= e(url('calendar')) ?>"><?= icon('calendar') ?> Calendar</a>
-    <a class="nav-link <?= $nav === 'contacts' ? 'is-active' : '' ?>" href="<?= e(url('contacts')) ?>"><?= icon('contact') ?> Contacts</a>
+    <?php foreach (\BlaCloud\Apps::navItems() as $item): ?>
+    <a class="nav-link <?= $nav === $item['route'] ? 'is-active' : '' ?>" href="<?= e(url($item['route'])) ?>"><?= icon($item['icon']) ?> <?= e($item['label']) ?></a>
+    <?php endforeach; ?>
     <a class="nav-link <?= $nav === 'shared' ? 'is-active' : '' ?>" href="<?= e(url('shared')) ?>"><?= icon('users') ?> Shared with me</a>
     <a class="nav-link <?= $nav === 'shared-by-me' ? 'is-active' : '' ?>" href="<?= e(url('shared-by-me')) ?>"><?= icon('link') ?> Shared by me</a>
     <a class="nav-link <?= $nav === 'trash' ? 'is-active' : '' ?>" href="<?= e(url('trash')) ?>"><?= icon('bin') ?> Trash</a>
@@ -47,6 +48,7 @@ include __DIR__ . '/partials/head.php';
       <a class="nav-link <?= $nav === 'admin' ? 'is-active' : '' ?>" href="<?= e(url('admin')) ?>"><?= icon('gauge') ?> System status</a>
       <a class="nav-link <?= $nav === 'admin.backups' ? 'is-active' : '' ?>" href="<?= e(url('admin.backups')) ?>"><?= icon('archive') ?> Backups</a>
       <a class="nav-link <?= $nav === 'admin.encryption' ? 'is-active' : '' ?>" href="<?= e(url('admin.encryption')) ?>"><?= icon('lock') ?> Encryption</a>
+      <a class="nav-link <?= $nav === 'admin.apps' ? 'is-active' : '' ?>" href="<?= e(url('admin.apps')) ?>"><?= icon('puzzle') ?> Apps</a>
     <?php endif; ?>
     <form class="sidebar__logout" method="post" action="<?= e(url('logout')) ?>">
       <?= csrf_field() ?>

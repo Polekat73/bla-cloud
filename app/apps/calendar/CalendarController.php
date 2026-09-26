@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-namespace BlaCloud\Controllers;
+namespace BlaCloud\Apps\Calendar;
 
 use BlaCloud\Audit;
 use BlaCloud\Auth;
@@ -33,7 +33,7 @@ final class CalendarController
         };
         $events = $calIds ? $this->eventsBetween($calIds, $rangeStart, $rangeEnd) : [];
 
-        View::render('calendar/index', [
+        View::renderApp(__DIR__, 'index', [
             'title'      => 'Calendar',
             'nav'        => 'calendar',
             'view'       => $view,

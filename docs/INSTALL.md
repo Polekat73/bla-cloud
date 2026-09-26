@@ -223,6 +223,19 @@ A few things worth knowing:
   while playing) and thumbnail generation decrypt a temporary full copy first — noticeably slower
   than for a plain file of the same size. Turn it off if that matters more than the protection.
 
+## Apps
+
+Calendar and Contacts, plus anything else you add, are apps under **Administration → Apps**, where
+you can turn each one on or off. Turning one off just hides its pages and sidebar link — it doesn't
+touch its data, and (for Calendar/Contacts specifically) doesn't stop it syncing over CalDAV/CardDAV,
+since that sync is handled by the core, not the app.
+
+To install a new app, place its folder inside `app/apps/` on your server (the same way you'd upload
+BLA-Cloud itself — FTP, File Manager, or unzip-and-upload), then enable it on that page. There's no
+in-browser "upload an app" button by design: an app is arbitrary PHP that runs in-process alongside
+the rest of BLA-Cloud, so only install ones you trust — see `app/apps/README.md` if you're writing
+your own.
+
 ## Troubleshooting
 
 | Problem | Fix |

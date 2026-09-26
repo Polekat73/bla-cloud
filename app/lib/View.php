@@ -19,9 +19,17 @@ final class View
 
     public static function capture(string $name, array $vars = []): string
     {
-        $file = BLA_APP . '/views/' . $name . '.php';
-        if (!preg_match('~^[a-z0-9_/-]+$~', $name) || !is_file($file)) {
+        if (!preg_match('~^[a-z0-9_/-]+$~', $name)) {
             throw new \RuntimeException('View not found: ' . $name);
+        }
+        return self::captureFile(BLA_APP . '/views/' . $name . '.php', $vars);
+    }
+
+    /** Like capture(), but for a view file outside app/views — used by apps, whose views live alongside their own code. */
+    public static function captureFile(string $file, array $vars = []): string
+    {
+        if (!is_file($file)) {
+            throw new \RuntimeException('View not found: ' . $file);
         }
         extract($vars, EXTR_SKIP);
         ob_start();
@@ -32,6 +40,18 @@ final class View
             throw $e;
         }
         return (string) ob_get_clean();
+    }
+
+    /** Render {$appDir}/views/{$name}.php inside the main layout — an app's equivalent of render(). */
+    public static function renderApp(string $appDir, string $name, array $vars = [], string $layout = 'layout'): void
+    {
+        Security::sendHeaders();
+        if (!headers_sent()) {
+            header('Content-Type: text/html; charset=utf-8');
+            header('Cache-Control: no-store');
+        }
+        $content = self::captureFile(rtrim($appDir, '/') . '/views/' . $name . '.php', $vars);
+        echo self::capture($layout, $vars + ['content' => $content]);
     }
 
     public static function json(array $data, int $status = 200): never

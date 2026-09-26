@@ -11,9 +11,8 @@ use BlaCloud\Controllers\EncryptionController;
 use BlaCloud\Controllers\LinkController;
 use BlaCloud\Controllers\ShareController;
 use BlaCloud\Controllers\UsersController;
+use BlaCloud\Controllers\AppsController;
 use BlaCloud\Controllers\AuthController;
-use BlaCloud\Controllers\CalendarController;
-use BlaCloud\Controllers\ContactsController;
 use BlaCloud\Controllers\DavController;
 use BlaCloud\Controllers\FilesController;
 use BlaCloud\Controllers\SettingsController;
@@ -71,6 +70,8 @@ final class App
         'admin.encryption.resume'   => [EncryptionController::class, 'resume'],
         'admin.encryption.migrate-encrypt' => [EncryptionController::class, 'migrateEncrypt'],
         'admin.encryption.migrate-decrypt' => [EncryptionController::class, 'migrateDecrypt'],
+        'admin.apps'         => [AppsController::class, 'index'],
+        'admin.apps.toggle'  => [AppsController::class, 'toggle'],
         'users'          => [UsersController::class, 'index'],
         'users.create'   => [UsersController::class, 'create'],
         'users.action'   => [UsersController::class, 'action'],
@@ -90,13 +91,6 @@ final class App
         'sync'           => [SyncController::class, 'index'],
         'sync.apppasswords.create' => [SyncController::class, 'createAppPassword'],
         'sync.apppasswords.delete' => [SyncController::class, 'deleteAppPassword'],
-        'calendar'          => [CalendarController::class, 'index'],
-        'calendar.event.save'   => [CalendarController::class, 'saveEvent'],
-        'calendar.event.delete' => [CalendarController::class, 'deleteEvent'],
-        'calendar.new'      => [CalendarController::class, 'newCalendar'],
-        'contacts'        => [ContactsController::class, 'index'],
-        'contacts.save'   => [ContactsController::class, 'save'],
-        'contacts.delete' => [ContactsController::class, 'delete'],
     ];
 
     public static function run(): void
@@ -133,12 +127,13 @@ final class App
         if ($route === '') {
             View::redirect(Auth::user() ? 'files' : 'login');
         }
-        if (!isset(self::ROUTES[$route])) {
+        $routes = self::ROUTES + Apps::routes();
+        if (!isset($routes[$route])) {
             http_response_code(404);
             View::render('error', ['title' => 'Page not found', 'message' => 'That page does not exist.']);
             return;
         }
-        [$class, $method] = self::ROUTES[$route];
+        [$class, $method] = $routes[$route];
         (new $class())->$method();
     }
 }

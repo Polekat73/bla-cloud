@@ -12,7 +12,7 @@ Built in stages, and each stage is tested before the next begins.
 | **6. Backups** | Scheduled encrypted backups, verify ("restore drill"), one-click restore, cron with a page-visit fallback | ✅ **Done (v0.6.0)** — local destination only, no S3 yet; see below |
 | **7. Safe in-app updates** | Check for and apply new versions from inside the app, with automatic rollback if something goes wrong | Planned — needs an actual release channel to check against first |
 | **8. Encryption at rest** | Optional libsodium file encryption with clear recovery guidance | ✅ **Done (v0.7.0)**, built ahead of Stage 7 (no release channel exists yet for safe updates) — file contents only, local files area only; see below |
-| **9. Apps system** | Documented plugin structure, install/enable/disable from the admin panel | Planned |
+| **9. Apps system** | Documented plugin structure, install/enable/disable from the admin panel | ✅ **Done (v0.8.0)** — in-process PHP apps, manual install (drop a folder in), no upload UI yet; see below |
 | **Later** | Video calls (WebRTC with PHP signaling + optional TURN server), document editor, desktop & phone apps | Architecture reserved |
 
 Before real-world use (after Stage 3–4): an independent security review.
@@ -54,3 +54,14 @@ very large encrypted files than for plain ones — a deliberate simplicity-over-
 since a subtle bug in a custom seekable cipher risks actual data loss. There's no passphrase
 rotation: changing it means turning encryption off (decrypting everything back to plain) and back on
 with a new one.
+
+**Stage 9 notes:** apps are in-process PHP (no sandboxing — a bad or malicious app can affect the
+whole site, the same trust model as a WordPress plugin), each in its own folder under `app/apps/`
+with a `manifest.php` declaring its routes and sidebar entry — see `app/apps/README.md`. Installing
+one is manual file placement (unzip into `app/apps/`, then enable it in Administration → Apps), not
+an in-browser upload — extracting and running arbitrary PHP from an admin upload was judged too
+large a security surface for a first pass. The built-in Calendar and Contacts (Stage 5) were
+converted to be the first two apps built on this system, proving it with real functionality rather
+than a toy example; their underlying CalDAV/CardDAV sync (Stage 4) is unaffected by the app's
+enabled state, since sync is core infrastructure, not part of the app. There's no per-app database
+migration system yet — an app that needs its own tables creates them itself on first use.

@@ -1,5 +1,19 @@
 # Changelog
 
+## 0.8.0 — Stage 9: Apps system
+- **Apps system**: an in-process PHP plugin framework. Each app is a self-contained folder under
+  `app/apps/` with its own controller, views and a `manifest.php` declaring its routes and sidebar
+  entry — see `app/apps/README.md` for the format and a worked example.
+- **Administration → Apps**: enable or disable any installed app. Disabling one removes its pages
+  and sidebar link but touches nothing else — its data, if any, is untouched and comes back the
+  moment it's re-enabled.
+- The built-in **Calendar** and **Contacts** (Stage 5) are now built as apps on this same system —
+  proof that it's not special-cased for them. Their CalDAV/CardDAV sync (Stage 4) is core
+  infrastructure and keeps working regardless of whether the app is enabled.
+- Installing a new app is manual file placement (unzip into `app/apps/`), not an in-browser upload —
+  deliberately, since extracting and running arbitrary PHP from an admin upload is a much bigger
+  security surface than a human deciding what goes on their own server. See docs/ROADMAP.md.
+
 ## 0.7.0 — Stage 8: Encryption at rest
 - **Encryption at rest** for file contents (Administration > Encryption): a separate passphrase
   (not your account password, not the app's own encryption key) protects files from anyone who
