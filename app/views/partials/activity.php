@@ -22,9 +22,14 @@ $labels = [
     'encryption.enabled' => 'Encryption turned on', 'encryption.paused' => 'Encryption turned off',
     'encryption.migrated_encrypt' => 'Encrypted existing files', 'encryption.migrated_decrypt' => 'Decrypted existing files',
     'apps.enabled' => 'App enabled', 'apps.disabled' => 'App disabled',
+    'project.created' => 'Project created', 'project.deleted' => 'Project deleted',
+    'project.member_added' => 'Added a project member', 'project.member_removed' => 'Removed a project member',
+    'project.task_created' => 'Task created', 'project.task_deleted' => 'Task deleted',
+    'aitoken.created' => 'New AI access token', 'aitoken.revoked' => 'AI access token revoked',
+    'mcp.tool_call' => 'AI action',
 ];
 $bad = ['login.failed', 'login.throttled', '2fa.failed', '2fa.disabled', 'user.delete', 'user.reset_2fa', 'apppassword.revoked',
-    'backup.failed', 'backup.disabled', 'encryption.paused', 'apps.disabled'];
+    'backup.failed', 'backup.disabled', 'encryption.paused', 'apps.disabled', 'aitoken.revoked'];
 ?>
 <?php if (!$activity): ?>
   <p class="muted">No activity yet.</p>

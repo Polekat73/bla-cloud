@@ -3,10 +3,10 @@
 **Your own private cloud, by [Best Life Apps](https://bestlifeapps.com).**
 A safe place for your files that runs on your own server, written from scratch in plain PHP. There's no Docker to set up and it works on ordinary web hosting.
 
-> **Status: Stage 9 of the roadmap (v0.8.0).** Setup wizard, secure sign-in with two-step verification, a full file manager,
-> people management and sharing, WebDAV/CalDAV/CardDAV sync, encrypted backups, encryption at rest, and now an
-> **apps system** (with the built-in Calendar & Contacts converted to run on it) are done. Safe in-app updates are next,
-> once there's a release channel to check against (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+> **Status: Stage 11 of the roadmap (v0.10.0).** Setup wizard, secure sign-in with two-step verification, a full file
+> manager, people management and sharing, WebDAV/CalDAV/CardDAV sync, encrypted backups, encryption at rest, an apps
+> system (Calendar, Contacts and now **Projects**), and an **MCP server for AI integration** are done. Safe in-app
+> updates are next, once there's a release channel to check against (see [docs/ROADMAP.md](docs/ROADMAP.md)).
 
 ---
 
@@ -51,9 +51,14 @@ A safe place for your files that runs on your own server, written from scratch i
   only you know, with a "verify" restore drill and one-click restore.
 - **Encryption at rest.** Optionally encrypt file contents on disk under a passphrase separate from
   your account password — protects against anyone who only gets the raw data folder.
-- **Apps system.** Calendar and Contacts are built as apps on a small plugin framework — enable or
-  disable any app from Administration → Apps, and add your own by dropping a folder into `app/apps/`
-  (see `app/apps/README.md`).
+- **Apps system.** Calendar, Contacts and Projects are built as apps on a small plugin framework —
+  enable or disable any app from Administration → Apps, and add your own by dropping a folder into
+  `app/apps/` (see `app/apps/README.md`).
+- **Projects.** Kanban-style project boards: multiple boards, tasks with due dates and assignees,
+  columns you can add or remove, and comments — share a project with other people on your cloud.
+- **AI integration (MCP).** Connect an MCP-compatible AI assistant with a revocable, per-person token
+  (Settings → Sync → AI access). It gets full read/write access to *that person's own* files,
+  calendar, contacts and projects — never anyone else's data, never admin functions.
 - **Automatic upgrades.** Upload a new version over the old one and the database updates itself on the next page load.
 - **Housekeeping without cron.** Old trash, old versions, temp files and scheduled backups are handled
   automatically — or wire up real cron (`tools/cron.php`) on hosts that allow it.

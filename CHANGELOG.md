@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.10.0 — Stage 11: AI integration (MCP)
+- **MCP server** at `/mcp`: a Model Context Protocol server (JSON-RPC 2.0, single-JSON-response
+  "Streamable HTTP" transport) so an MCP-compatible AI assistant can connect directly to your cloud.
+- **AI access tokens** (Settings → Sync → AI access): revocable, per-person Bearer tokens, the same
+  spirit as app passwords. A token gives an AI full read/write access to *that one person's own*
+  files, calendar, contacts and projects — 24 tools in total — and nothing else: never another
+  user's data, never admin functions (no user management, settings, backups, or app enable/disable).
+- `files_read`/`files_write` are text-only, capped at 256 KB; `files_write` creates missing parent
+  folders automatically. Everything else mirrors what the web UI itself can do, enforced by the same
+  authorization checks (not a separate, easier-to-get-wrong copy of them).
+- No sandboxing of what a connected AI can do with its access — treat a token like a password.
+
+## 0.9.0 — Stage 10: Projects app
+- **Projects**: Kanban-style project boards, built as the third app on the Stage 9 apps framework.
+  Multiple projects, each with columns (defaults: To do / In progress / Done, or your own), tasks
+  with a description, assignee and due date, and comments.
+- Share a project by adding other people on your cloud as members; any member can manage columns,
+  tasks and comments, while renaming/deleting the project or managing membership stays with the
+  owner.
+- Drag and drop a task card between columns to move it.
+- No CalDAV sync and due dates don't appear on the Calendar app yet — see docs/ROADMAP.md.
+
 ## 0.8.0 — Stage 9: Apps system
 - **Apps system**: an in-process PHP plugin framework. Each app is a self-contained folder under
   `app/apps/` with its own controller, views and a `manifest.php` declaring its routes and sidebar

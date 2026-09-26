@@ -13,6 +13,8 @@ Built in stages, and each stage is tested before the next begins.
 | **7. Safe in-app updates** | Check for and apply new versions from inside the app, with automatic rollback if something goes wrong | Planned — needs an actual release channel to check against first |
 | **8. Encryption at rest** | Optional libsodium file encryption with clear recovery guidance | ✅ **Done (v0.7.0)**, built ahead of Stage 7 (no release channel exists yet for safe updates) — file contents only, local files area only; see below |
 | **9. Apps system** | Documented plugin structure, install/enable/disable from the admin panel | ✅ **Done (v0.8.0)** — in-process PHP apps, manual install (drop a folder in), no upload UI yet; see below |
+| **10. Projects app** | Kanban-style project boards built on the Stage 9 apps system: tasks, columns, assignees, due dates, comments | ✅ **Done (v0.9.0)** — web UI only, no CalDAV/task-sync yet; see below |
+| **11. AI integration (MCP)** | A Model Context Protocol server so an AI assistant can read and manage your own data | ✅ **Done (v0.10.0)** — full read/write, scoped to one person's own data, revocable tokens; see below |
 | **Later** | Video calls (WebRTC with PHP signaling + optional TURN server), document editor, desktop & phone apps | Architecture reserved |
 
 Before real-world use (after Stage 3–4): an independent security review.
@@ -65,3 +67,23 @@ converted to be the first two apps built on this system, proving it with real fu
 than a toy example; their underlying CalDAV/CardDAV sync (Stage 4) is unaffected by the app's
 enabled state, since sync is core infrastructure, not part of the app. There's no per-app database
 migration system yet — an app that needs its own tables creates them itself on first use.
+
+**Stage 10 notes:** any project member can create/edit/move tasks, manage columns and comment; only
+the owner can rename/delete the project or add/remove members — one role beyond "member" was judged
+enough for v1. Tasks don't sync over CalDAV and due dates don't appear on the Calendar app yet
+(a deliberate scope cut — see the Calendar/Contacts precedent in Stage 5 for why that integration is
+harder than it looks). Dragging a card to a different column always appends it to the end of that
+column; reordering within a column isn't tracked yet.
+
+**Stage 11 notes:** `/mcp` is a Model Context Protocol server (JSON-RPC 2.0, "Streamable HTTP"
+transport, single-JSON-response mode — no SSE stream, which keeps it simple to run on ordinary PHP
+hosting). Authentication is a per-person, revocable "AI access token" (Settings → Sync → AI access),
+the same shape as an app password but carried as a Bearer token instead of HTTP Basic. A token grants
+**full read/write access to that one person's own data** — files, calendar, contacts, and projects —
+and nothing else: never another user's data, never admin functions (no user management, settings,
+backups or app enable/disable). That scoping is enforced by reusing the exact same authorization
+checks the web UI uses (`ProjectsData::requireMember()`, `Storage`'s path containment, etc.), not a
+separate copy of them. `files_read`/`files_write` are text-only and capped at 256 KB — binary files
+and photos aren't readable or writable over MCP yet. There's no sandboxing of what a connected AI can
+do with that access, so treat an AI access token with the same care as a password: only give it to an
+assistant you trust, and revoke it if you stop using that integration.

@@ -236,6 +236,22 @@ in-browser "upload an app" button by design: an app is arbitrary PHP that runs i
 the rest of BLA-Cloud, so only install ones you trust — see `app/apps/README.md` if you're writing
 your own.
 
+## AI access (MCP)
+
+**Settings → Sync → AI access** connects an MCP-compatible AI assistant (Claude and others) directly
+to your account. Create a token there — it's shown once, like a backup or encryption passphrase —
+and add BLA-Cloud as a remote MCP server in your AI assistant using the address shown on that page
+(`https://your-domain.com/cloud/mcp`) with the token as the Bearer credential.
+
+A token gives that AI **full read/write access to your own data**: files (reading and writing plain
+text files up to 256 KB; creating, moving and deleting anything), calendar events, contacts, and
+projects. It can never see another person's data on your cloud, and it can never reach admin
+functions — no user management, no settings, no backups, no turning apps on or off.
+
+There's no sandboxing beyond that scoping: whatever the AI decides to do with its access, it can do,
+the same as if you'd done it yourself. Treat a token like a password — only issue one to an assistant
+you trust, and revoke it the moment you stop using that integration or suspect it's been exposed.
+
 ## Troubleshooting
 
 | Problem | Fix |

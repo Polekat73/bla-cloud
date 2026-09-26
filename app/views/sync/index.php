@@ -63,6 +63,62 @@ $carddav = "$scheme://$host$base/dav/addressbooks/" . rawurlencode($user['userna
     </div>
   </section>
 
+  <?php if ($newAiToken): ?>
+  <section class="card">
+    <div class="card__head">
+      <span class="card__icon is-ok"><?= icon('key') ?></span>
+      <div><h2>New AI access token</h2><p class="muted">Copy it now — you won't be able to see it again.</p></div>
+    </div>
+    <div class="codes" data-codes><code><?= e($newAiToken['token']) ?></code></div>
+    <div class="actions actions--left">
+      <button type="button" class="btn btn--ghost" data-copy="<?= e($newAiToken['token']) ?>"><?= icon('copy') ?> Copy token</button>
+    </div>
+  </section>
+  <?php endif; ?>
+
+  <section class="card">
+    <div class="card__head">
+      <span class="card__icon"><?= icon('puzzle') ?></span>
+      <div><h2>AI access</h2><p class="muted">Connect an MCP-compatible AI assistant (like Claude) to this account.
+        A token gives the AI full read/write access to <strong>your own</strong> files, calendar, contacts and
+        projects — never anyone else's data, and never admin functions. Revoke a token any time.</p></div>
+    </div>
+
+    <?php if ($aiTokens): ?>
+    <div class="table-wrap">
+      <table class="file-table">
+        <thead><tr><th>Label</th><th>Created</th><th>Last used</th><th></th></tr></thead>
+        <tbody>
+        <?php foreach ($aiTokens as $t): ?>
+          <tr>
+            <td><?= e($t['label']) ?></td>
+            <td class="nowrap"><?= e(human_time((int) strtotime($t['created_at'] . ' UTC'))) ?></td>
+            <td class="nowrap"><?= $t['last_used_at'] ? e(human_time((int) strtotime($t['last_used_at'] . ' UTC')) . ' · ' . $t['last_used_ip']) : '<span class="muted">Never</span>' ?></td>
+            <td class="nowrap">
+              <form method="post" action="<?= e(url('sync.aitokens.delete')) ?>" data-confirm="Revoke “<?= e($t['label']) ?>”? Any AI using it will lose access immediately.">
+                <?= csrf_field() ?>
+                <input type="hidden" name="id" value="<?= (int) $t['id'] ?>">
+                <button class="btn btn--ghost btn--sm btn--danger" type="submit"><?= icon('trash') ?> Revoke</button>
+              </form>
+            </td>
+          </tr>
+        <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+    <?php else: ?>
+      <p class="muted">No AI access tokens yet.</p>
+    <?php endif; ?>
+
+    <label class="field"><span>MCP server address</span>
+      <input type="text" readonly value="<?= e("$scheme://$host" . rtrim(\BlaCloud\Request::basePath(), '/') . '/mcp') ?>" onclick="this.select()"></label>
+    <p class="hint">Add this as a remote MCP server in your AI assistant, using a token below as the Bearer credential.</p>
+
+    <div class="actions actions--left">
+      <button type="button" class="btn btn--primary" data-open="dlg-newaitoken"><?= icon('plus') ?> New AI access token</button>
+    </div>
+  </section>
+
   <section class="card">
     <div class="card__head">
       <span class="card__icon"><?= icon('link') ?></span>
@@ -86,6 +142,19 @@ $carddav = "$scheme://$host$base/dav/addressbooks/" . rawurlencode($user['userna
     <h2>New app password</h2>
     <label class="field"><span>What device is this for?</span>
       <input name="label" maxlength="128" placeholder="e.g. My iPhone, Work laptop" autofocus></label>
+    <div class="actions"><button type="button" class="btn btn--ghost" data-close>Cancel</button>
+      <button class="btn btn--primary" type="submit">Create</button></div>
+  </form>
+</dialog>
+
+<dialog id="dlg-newaitoken" class="dialog">
+  <form method="post" action="<?= e(url('sync.aitokens.create')) ?>" class="form">
+    <?= csrf_field() ?>
+    <h2>New AI access token</h2>
+    <label class="field"><span>What is this for?</span>
+      <input name="label" maxlength="128" placeholder="e.g. Claude, my assistant" autofocus></label>
+    <p class="hint">The AI you connect this to will be able to fully read and manage your files, calendar,
+      contacts and projects — the same as you can. It cannot see anyone else's data or reach admin functions.</p>
     <div class="actions"><button type="button" class="btn btn--ghost" data-close>Cancel</button>
       <button class="btn btn--primary" type="submit">Create</button></div>
   </form>
