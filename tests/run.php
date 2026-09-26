@@ -12,9 +12,12 @@ if (PHP_SAPI !== 'cli') {
 require dirname(__DIR__) . '/app/bootstrap.php';
 restore_exception_handler();
 
+use BlaCloud\AiTokens;
 use BlaCloud\AppPasswords;
 use BlaCloud\Apps;
+use BlaCloud\Apps\Projects\ProjectsData;
 use BlaCloud\Backup;
+use BlaCloud\Mcp\Tools as McpTools;
 use BlaCloud\Database;
 use BlaCloud\Encryption;
 use BlaCloud\FileCrypto;
@@ -534,6 +537,114 @@ try {
     rmdir($badAppDir);
     Apps::resetCache();
 }
+
+echo "Projects app (Kanban boards)\n";
+$pid = ProjectsData::create(1, 'Website Relaunch', 'Redo the marketing site');
+check('create() seeds 3 default columns', count(ProjectsData::columns($pid)) === 3);
+check('owner sees the project in forUser()', in_array($pid, array_column(ProjectsData::forUser(1), 'id'), true));
+check('non-member does not see it', !in_array($pid, array_column(ProjectsData::forUser(2), 'id'), true));
+check('requireMember() rejects a non-member', throws(fn () => ProjectsData::requireMember(2, $pid)));
+check('non-owner cannot add members', throws(fn () => ProjectsData::addMember(2, $pid, 'anna')));
+ProjectsData::addMember(1, $pid, 'anna');
+check('member is added', count(ProjectsData::members($pid)) === 2);
+check('adding the same member twice is rejected', throws(fn () => ProjectsData::addMember(1, $pid, 'anna')));
+check('member (not owner) can now see the project', in_array($pid, array_column(ProjectsData::forUser(2), 'id'), true));
+
+$cols = ProjectsData::columns($pid);
+$todoCol = $cols[0]['id'];
+$doneCol = $cols[2]['id'];
+$extraCol = ProjectsData::createColumn(2, $pid, 'Blocked'); // a non-owner member can manage columns
+check('member can create a column', count(ProjectsData::columns($pid)) === 4);
+
+$taskId = ProjectsData::createTask(2, $pid, $todoCol, 'Write the copy', 'Homepage + pricing', 1, '2026-12-01');
+check('task assignee must be a project member', throws(fn () => ProjectsData::createTask(1, $pid, $todoCol, 'x', '', 999)));
+check('task created with the right column and assignee', ProjectsData::task($taskId)['assignee_id'] === 1);
+ProjectsData::updateTask(1, $taskId, 'Write the homepage copy', 'Homepage only', 2, null);
+check('updateTask() changes title/description/assignee', ProjectsData::task($taskId)['title'] === 'Write the homepage copy' && ProjectsData::task($taskId)['assignee_id'] === 2);
+ProjectsData::moveTask(2, $taskId, $doneCol);
+check('moveTask() changes the column', (int) ProjectsData::task($taskId)['column_id'] === $doneCol);
+check('cannot delete the column now holding a task', throws(fn () => ProjectsData::deleteColumn(1, $doneCol)));
+ProjectsData::deleteColumn(1, $extraCol); // empty, so this one is fine
+check('an empty column can be deleted', count(ProjectsData::columns($pid)) === 3);
+
+$commentId = ProjectsData::addComment(2, $taskId, 'First draft is up for review.');
+check('addComment() works and lists back out', count(ProjectsData::comments($taskId)) === 1 && ProjectsData::comments($taskId)[0]['id'] === $commentId);
+check('cannot remove the owner from their own project', throws(fn () => ProjectsData::removeMember(1, $pid, 1)));
+ProjectsData::removeMember(1, $pid, 2);
+check('removeMember() clears that member as an assignee too', ProjectsData::task($taskId)['assignee_id'] === null);
+check('removed member no longer sees the project', !in_array($pid, array_column(ProjectsData::forUser(2), 'id'), true));
+ProjectsData::deleteTask(1, $taskId);
+check('deleteTask() removes it', ProjectsData::task($taskId) === null);
+check('a non-member (former member) cannot delete the project', throws(fn () => ProjectsData::delete(2, $pid)));
+ProjectsData::delete(1, $pid);
+check('delete() cascades columns/tasks', Database::one('SELECT id FROM bla_projects WHERE id = ?', [$pid]) === null
+    && Database::one('SELECT id FROM bla_project_columns WHERE project_id = ?', [$pid]) === null);
+
+echo "AI access tokens\n";
+[$aiId, $aiToken] = AiTokens::create(1, 'Test assistant');
+check('token verifies to the right user', AiTokens::verify($aiToken)['id'] === 1);
+check('a wrong token does not verify', AiTokens::verify($aiToken . 'x') === null);
+check('an unrelated random string does not verify', AiTokens::verify('not-a-real-token') === null);
+check('forUser() lists it', count(AiTokens::forUser(1)) === 1);
+AiTokens::revoke(1, $aiId);
+check('revoked token no longer verifies', AiTokens::verify($aiToken) === null);
+
+echo "MCP tools (AI integration)\n";
+$u1 = Database::one('SELECT * FROM bla_users WHERE id = 1');
+$u2 = Database::one('SELECT * FROM bla_users WHERE id = 2');
+
+$defs = McpTools::definitions();
+check('exposes a full set of tools', count($defs) >= 20);
+check('every tool has a description and a schema', array_reduce(array_keys($defs), fn ($ok, $n) => $ok && is_string($defs[$n][0]) && is_array($defs[$n][1]), true));
+check('unknown tool name is rejected', throws(fn () => McpTools::call('not_a_tool', [], $u1)));
+
+McpTools::call('files_write', ['path' => '/mcp-test.txt', 'content' => 'hello from the AI'], $u1);
+check('files_write then files_read round-trips', McpTools::call('files_read', ['path' => '/mcp-test.txt'], $u1)['content'] === 'hello from the AI');
+check('files_write auto-creates missing parent folders', (function () use ($u1) {
+    McpTools::call('files_write', ['path' => '/mcp/nested/note.txt', 'content' => 'x'], $u1);
+    return McpTools::call('files_read', ['path' => '/mcp/nested/note.txt'], $u1)['content'] === 'x';
+})());
+check('files_list sees the new file', in_array('mcp-test.txt', array_column(McpTools::call('files_list', ['path' => ''], $u1)['items'], 'name'), true));
+McpTools::call('files_delete', ['path' => '/mcp-test.txt'], $u1);
+check('files_delete then files_read fails', throws(fn () => McpTools::call('files_read', ['path' => '/mcp-test.txt'], $u1)));
+
+$ev = McpTools::call('calendar_create_event', ['title' => 'AI-scheduled sync', 'start' => '2026-06-01 09:00', 'end' => '2026-06-01 10:00'], $u1);
+check('calendar_create_event returns an object_id', $ev['object_id'] > 0);
+check('calendar_list_events finds it', in_array('AI-scheduled sync', array_column(McpTools::call('calendar_list_events', ['start' => '2026-05-01', 'end' => '2026-07-01'], $u1)['events'], 'title'), true));
+McpTools::call('calendar_update_event', ['object_id' => $ev['object_id'], 'calendar_id' => $ev['calendar_id'], 'title' => 'Renamed sync', 'start' => '2026-06-01 09:00', 'end' => '2026-06-01 10:00'], $u1);
+check('calendar_update_event renames it', array_column(McpTools::call('calendar_list_events', ['start' => '2026-05-01', 'end' => '2026-07-01'], $u1)['events'], 'title') === ['Renamed sync']);
+McpTools::call('calendar_delete_event', ['object_id' => $ev['object_id'], 'calendar_id' => $ev['calendar_id']], $u1);
+check('calendar_delete_event removes it', McpTools::call('calendar_list_events', ['start' => '2026-05-01', 'end' => '2026-07-01'], $u1)['events'] === []);
+
+$ct = McpTools::call('contacts_create', ['given' => 'Grace', 'family' => 'Hopper', 'emails' => [['type' => 'work', 'value' => 'grace@navy.mil']]], $u1);
+check('contacts_create returns an id', $ct['id'] > 0);
+check('contacts_list finds it by name', count(McpTools::call('contacts_list', ['query' => 'Hopper'], $u1)['contacts']) === 1);
+McpTools::call('contacts_update', ['id' => $ct['id'], 'given' => 'Grace', 'family' => 'Murray Hopper'], $u1);
+check('contacts_update changes the name', McpTools::call('contacts_list', ['query' => 'Murray'], $u1)['contacts'][0]['fn'] === 'Grace Murray Hopper');
+McpTools::call('contacts_delete', ['id' => $ct['id']], $u1);
+check('contacts_delete removes it', McpTools::call('contacts_list', ['query' => 'Hopper'], $u1)['contacts'] === []);
+
+$mp = McpTools::call('projects_create', ['name' => 'AI-run project'], $u1);
+check('projects_create returns an id', $mp['id'] > 0);
+McpTools::call('projects_add_member', ['project_id' => $mp['id'], 'username' => 'anna'], $u1);
+$colId = McpTools::call('projects_get', ['project_id' => $mp['id']], $u1)['columns'][0]['id'];
+$mt = McpTools::call('projects_create_task', ['project_id' => $mp['id'], 'column_id' => $colId, 'title' => 'Draft the plan', 'assignee_username' => 'anna'], $u1);
+check('projects_create_task assigned it via username', ProjectsData::task($mt['task_id'])['assignee_username'] === 'anna');
+$doneColId = McpTools::call('projects_get', ['project_id' => $mp['id']], $u1)['columns'][2]['id'];
+McpTools::call('projects_move_task', ['task_id' => $mt['task_id'], 'column_id' => $doneColId], $u1);
+check('projects_move_task moved it', (int) ProjectsData::task($mt['task_id'])['column_id'] === $doneColId);
+McpTools::call('projects_add_comment', ['task_id' => $mt['task_id'], 'body' => 'Looks good.'], $u1);
+check('projects_add_comment recorded it', count(ProjectsData::comments($mt['task_id'])) === 1);
+check('assigning to a non-member username is rejected', throws(fn () => McpTools::call('projects_update_task', ['task_id' => $mt['task_id'], 'title' => 'x', 'assignee_username' => 'nope'], $u1)));
+
+$pdo->exec("INSERT INTO bla_users (id, username, password_hash, created_at) VALUES (3, 'outsider', 'x', '2026-01-01 00:00:00')");
+$outsider = Database::one('SELECT * FROM bla_users WHERE id = 3');
+check('a non-member cannot probe another project\'s membership via assignee resolution',
+    throws(fn () => McpTools::call('projects_update_task', ['task_id' => $mt['task_id'], 'title' => 'x', 'assignee_username' => 'anna'], $outsider)));
+check('a user token can only reach their own data: an unrelated user cannot read the project via MCP',
+    throws(fn () => McpTools::call('projects_get', ['project_id' => $mp['id']], $outsider)));
+check('an unrelated user cannot read another user\'s file via MCP',
+    throws(fn () => McpTools::call('files_read', ['path' => '/mcp/nested/note.txt'], $outsider)));
 
 $pdo = null;
 exec('rm -rf ' . escapeshellarg($tmp));

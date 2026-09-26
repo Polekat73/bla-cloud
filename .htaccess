@@ -12,6 +12,8 @@ DirectoryIndex index.php
   # WebDAV/CalDAV/CardDAV: every verb (PROPFIND, PUT, MKCOL...) goes through index.php too.
   RewriteRule ^dav(/.*)?$ index.php [L]
   RewriteRule ^\.well-known/(caldav|carddav)$ index.php [L]
+  # MCP (AI integration): a fixed path so AI clients can just point at https://your-domain/mcp
+  RewriteRule ^mcp(/.*)?$ index.php [L]
 </IfModule>
 
 <FilesMatch "\.(sqlite|part|log|md|sh|dist|example)$">

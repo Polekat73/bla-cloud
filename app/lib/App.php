@@ -15,6 +15,7 @@ use BlaCloud\Controllers\AppsController;
 use BlaCloud\Controllers\AuthController;
 use BlaCloud\Controllers\DavController;
 use BlaCloud\Controllers\FilesController;
+use BlaCloud\Controllers\McpController;
 use BlaCloud\Controllers\SettingsController;
 use BlaCloud\Controllers\SetupController;
 use BlaCloud\Controllers\SyncController;
@@ -91,6 +92,8 @@ final class App
         'sync'           => [SyncController::class, 'index'],
         'sync.apppasswords.create' => [SyncController::class, 'createAppPassword'],
         'sync.apppasswords.delete' => [SyncController::class, 'deleteAppPassword'],
+        'sync.aitokens.create' => [SyncController::class, 'createAiToken'],
+        'sync.aitokens.delete' => [SyncController::class, 'deleteAiToken'],
     ];
 
     public static function run(): void
@@ -113,6 +116,11 @@ final class App
         }
         if ($path === '/dav' || str_starts_with($path, '/dav/')) {
             (new DavController())->handle();
+            return;
+        }
+        // MCP (AI integration): also stateless, authenticated with a Bearer AI access token.
+        if ($path === '/mcp' || str_starts_with($path, '/mcp/')) {
+            (new McpController())->handle();
             return;
         }
 

@@ -11,7 +11,7 @@ use PDO;
  */
 final class Schema
 {
-    public const VERSION = 6;
+    public const VERSION = 7;
 
     public static function create(PDO $pdo, string $driver): void
     {
@@ -291,6 +291,81 @@ final class Schema
                     created_at DATETIME NOT NULL
                 )$tail",
                 $idx . 'idx_backups_created ON bla_backups (created_at)',
+            ],
+            7 => [
+                // Project management app (app/apps/projects) — projects, their membership, Kanban
+                // columns, tasks and comments. Any member can manage columns/tasks/comments; only the
+                // owner can rename/delete the project or add/remove members (see ProjectsData.php).
+                "CREATE TABLE IF NOT EXISTS bla_projects (
+                    id $id,
+                    owner_id $uid NOT NULL,
+                    name VARCHAR(128) NOT NULL,
+                    description TEXT NOT NULL DEFAULT '',
+                    created_at DATETIME NOT NULL,
+                    FOREIGN KEY (owner_id) REFERENCES bla_users(id) ON DELETE CASCADE
+                )$tail",
+                $idx . 'idx_projects_owner ON bla_projects (owner_id)',
+                "CREATE TABLE IF NOT EXISTS bla_project_members (
+                    id $id,
+                    project_id $uid NOT NULL,
+                    user_id $uid NOT NULL,
+                    added_at DATETIME NOT NULL,
+                    FOREIGN KEY (project_id) REFERENCES bla_projects(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE,
+                    UNIQUE (project_id, user_id)
+                )$tail",
+                $idx . 'idx_project_members_user ON bla_project_members (user_id)',
+                "CREATE TABLE IF NOT EXISTS bla_project_columns (
+                    id $id,
+                    project_id $uid NOT NULL,
+                    name VARCHAR(64) NOT NULL,
+                    position INT NOT NULL DEFAULT 0,
+                    created_at DATETIME NOT NULL,
+                    FOREIGN KEY (project_id) REFERENCES bla_projects(id) ON DELETE CASCADE
+                )$tail",
+                $idx . 'idx_project_columns_project ON bla_project_columns (project_id, position)',
+                "CREATE TABLE IF NOT EXISTS bla_project_tasks (
+                    id $id,
+                    project_id $uid NOT NULL,
+                    column_id $uid NOT NULL,
+                    title VARCHAR(255) NOT NULL,
+                    description TEXT NOT NULL DEFAULT '',
+                    assignee_id $uid NULL,
+                    due_at DATE NULL,
+                    position INT NOT NULL DEFAULT 0,
+                    created_by $uid NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL,
+                    FOREIGN KEY (project_id) REFERENCES bla_projects(id) ON DELETE CASCADE,
+                    FOREIGN KEY (column_id) REFERENCES bla_project_columns(id) ON DELETE CASCADE,
+                    FOREIGN KEY (assignee_id) REFERENCES bla_users(id) ON DELETE SET NULL
+                )$tail",
+                $idx . 'idx_project_tasks_column ON bla_project_tasks (column_id, position)',
+                $idx . 'idx_project_tasks_assignee ON bla_project_tasks (assignee_id)',
+                "CREATE TABLE IF NOT EXISTS bla_project_comments (
+                    id $id,
+                    task_id $uid NOT NULL,
+                    user_id $uid NOT NULL,
+                    body TEXT NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    FOREIGN KEY (task_id) REFERENCES bla_project_tasks(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE
+                )$tail",
+                $idx . 'idx_project_comments_task ON bla_project_comments (task_id)',
+                // Per-user AI access tokens (Bearer auth for /mcp — see app/lib/AiTokens.php). High-entropy
+                // random tokens, so a fast indexed hash lookup is appropriate (unlike a human-chosen
+                // password, which needs slow hashing); see AiTokens::verify().
+                "CREATE TABLE IF NOT EXISTS bla_ai_tokens (
+                    id $id,
+                    user_id $uid NOT NULL,
+                    label VARCHAR(128) NOT NULL DEFAULT '',
+                    token_hash VARCHAR(64) NOT NULL UNIQUE,
+                    created_at DATETIME NOT NULL,
+                    last_used_at DATETIME NULL,
+                    last_used_ip VARCHAR(45) NOT NULL DEFAULT '',
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE
+                )$tail",
+                $idx . 'idx_ai_tokens_user ON bla_ai_tokens (user_id)',
             ],
             default => [],
         };

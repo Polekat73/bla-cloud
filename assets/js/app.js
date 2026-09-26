@@ -321,6 +321,123 @@
     });
   }
 
+  // ---------- Projects ----------
+  const boardRoot = $('[data-project-board]');
+  if (boardRoot) initProjectBoard(boardRoot);
+
+  function initProjectBoard(root) {
+    const csrf = document.body.dataset.csrf;
+    const ds = $('[data-board]', root).dataset;
+    const dlg = document.getElementById('dlg-task');
+    const form = $('[data-task-form]', dlg);
+    const titleEl = $('[data-task-title]', dlg);
+    const deleteBtn = $('[data-delete-task]', dlg);
+    const deleteForm = document.getElementById('form-delete-task');
+    const commentsSection = $('[data-task-comments]', dlg);
+    const commentList = $('[data-comment-list]', dlg);
+    const f = (name) => $('[data-f=' + name + ']', form);
+
+    async function post(url, data) {
+      const fd = new FormData();
+      fd.append('_csrf', csrf);
+      Object.entries(data).forEach(([k, v]) => fd.append(k, v));
+      const r = await fetch(url, { method: 'POST', body: fd, headers: { Accept: 'application/json', 'X-Requested-With': 'fetch' } });
+      const j = await r.json().catch(() => ({ ok: false, error: 'Unexpected server response.' }));
+      if (!j.ok) throw new Error(j.error || 'Something went wrong.');
+      return j;
+    }
+
+    function renderComments(list) {
+      commentList.textContent = '';
+      if (!list.length) {
+        commentList.innerHTML = '<li class="muted">No comments yet.</li>';
+        return;
+      }
+      list.forEach((c) => {
+        const li = document.createElement('li');
+        const meta = document.createElement('div');
+        meta.className = 'comment-meta';
+        meta.textContent = c.name + ' · ' + c.when;
+        const body = document.createElement('div');
+        body.textContent = c.body;
+        li.append(meta, body);
+        commentList.appendChild(li);
+      });
+    }
+
+    function resetForm(columnId) {
+      form.reset();
+      form.action = ds.createUrl;
+      f('task_id').value = '';
+      f('column_id').value = columnId || '';
+      titleEl.textContent = 'New task';
+      deleteBtn.hidden = true;
+      commentsSection.hidden = true;
+    }
+
+    function fillForm(card) {
+      const ds2 = card.dataset;
+      form.action = ds.updateUrl;
+      f('task_id').value = ds2.taskId;
+      f('column_id').value = ds2.columnId;
+      f('title').value = ds2.title;
+      f('description').value = ds2.description || '';
+      f('assignee_id').value = ds2.assigneeId && ds2.assigneeId !== '0' ? ds2.assigneeId : '';
+      f('due_at').value = ds2.dueAt || '';
+      titleEl.textContent = 'Edit task';
+      deleteBtn.hidden = false;
+      commentsSection.hidden = false;
+      $('[data-f=comment_task_id]', dlg).value = ds2.taskId;
+      renderComments(JSON.parse(ds2.comments || '[]'));
+    }
+
+    root.addEventListener('click', (e) => {
+      const addBtn = e.target.closest('[data-add-task]');
+      if (addBtn) { resetForm(addBtn.dataset.columnId); dlg.showModal(); return; }
+      const card = e.target.closest('[data-task]');
+      if (card) { fillForm(card); dlg.showModal(); }
+    });
+
+    deleteBtn.addEventListener('click', () => {
+      if (!window.confirm('Delete this task?')) return;
+      $('[data-df=task_id]', deleteForm).value = f('task_id').value;
+      deleteForm.submit();
+    });
+
+    // ---- Drag and drop between columns ----
+    let dragged = null;
+    root.addEventListener('dragstart', (e) => {
+      const card = e.target.closest('[data-task]');
+      if (!card) return;
+      dragged = card;
+      card.classList.add('is-dragging');
+      e.dataTransfer.setData('text/plain', card.dataset.taskId);
+      e.dataTransfer.effectAllowed = 'move';
+    });
+    root.addEventListener('dragend', () => { if (dragged) dragged.classList.remove('is-dragging'); dragged = null; });
+    $$('[data-column-list]', root).forEach((list) => {
+      list.addEventListener('dragover', (e) => { e.preventDefault(); list.closest('.board-col').classList.add('is-dragover'); });
+      list.addEventListener('dragleave', () => list.closest('.board-col').classList.remove('is-dragover'));
+      list.addEventListener('drop', async (e) => {
+        e.preventDefault();
+        list.closest('.board-col').classList.remove('is-dragover');
+        if (!dragged) return;
+        const taskId = dragged.dataset.taskId;
+        const columnId = list.dataset.columnId;
+        if (dragged.dataset.columnId === columnId) return;
+        const addBtn = $('[data-add-task]', list);
+        list.insertBefore(dragged, addBtn);
+        dragged.dataset.columnId = columnId;
+        try {
+          await post(ds.moveUrl, { task_id: taskId, column_id: columnId });
+        } catch (err) {
+          alert(err.message);
+          location.reload();
+        }
+      });
+    });
+  }
+
   // ---------- Files ----------
   const files = $('[data-files]');
   if (files) initFiles(files);
