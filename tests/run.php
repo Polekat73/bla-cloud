@@ -15,6 +15,7 @@ restore_exception_handler();
 use BlaCloud\AiTokens;
 use BlaCloud\AppPasswords;
 use BlaCloud\Apps;
+use BlaCloud\Apps\Projects\ChannelsData;
 use BlaCloud\Apps\Projects\ProjectsData;
 use BlaCloud\Backup;
 use BlaCloud\Mcp\Tools as McpTools;
@@ -580,6 +581,47 @@ ProjectsData::delete(1, $pid);
 check('delete() cascades columns/tasks', Database::one('SELECT id FROM bla_projects WHERE id = ?', [$pid]) === null
     && Database::one('SELECT id FROM bla_project_columns WHERE project_id = ?', [$pid]) === null);
 
+echo "Project chat\n";
+$cpid = ProjectsData::create(1, 'Chat Test Project');
+$generalId = ChannelsData::forProject($cpid)[0]['id'];
+check('create() seeds a single General channel', ChannelsData::forProject($cpid)[0]['name'] === 'General' && count(ChannelsData::forProject($cpid)) === 1);
+check('owner is auto-added to the default channel', ChannelsData::isMember(1, $generalId));
+check('inviting requires the target to already be a project member', throws(fn () => ChannelsData::addMember(1, $generalId, 'anna')));
+ProjectsData::addMember(1, $cpid, 'anna');
+check('joining the project does NOT auto-join the channel', !ChannelsData::isMember(2, $generalId));
+check('non-channel-member cannot read messages', throws(fn () => ChannelsData::messagesSince(2, $generalId)));
+ChannelsData::addMember(1, $generalId, 'anna');
+check('invited project member can now read/post', ChannelsData::isMember(2, $generalId));
+check('adding the same person twice is rejected', throws(fn () => ChannelsData::addMember(1, $generalId, 'anna')));
+
+$m1 = ChannelsData::postMessage(1, $generalId, 'Kickoff at 3pm.');
+$m2 = ChannelsData::postMessage(2, $generalId, 'Sounds good!');
+check('postMessage() requires channel membership', throws(fn () => ChannelsData::postMessage(2, 999999, 'nope')));
+check('messagesSince(0) returns both, oldest first', array_column(ChannelsData::messagesSince(1, $generalId), 'id') === [$m1, $m2]);
+check('messagesSince($m1) returns only the newer one (poll semantics)', array_column(ChannelsData::messagesSince(1, $generalId, $m1), 'id') === [$m2]);
+check('a non-author, non-owner cannot delete someone else\'s message', throws(fn () => ChannelsData::deleteMessage(2, $m1)));
+ChannelsData::deleteMessage(1, $m2); // the project owner can delete anyone's message (moderation)
+check('the project owner can delete any message', array_column(ChannelsData::messagesSince(1, $generalId), 'id') === [$m1]);
+check('a member can delete their own message', (function () use ($generalId) {
+    $id = ChannelsData::postMessage(2, $generalId, 'delete me');
+    ChannelsData::deleteMessage(2, $id);
+    return Database::one('SELECT id FROM bla_channel_messages WHERE id = ?', [$id]) === null;
+})());
+
+$extraChannel = ChannelsData::createChannel(2, $cpid, 'random');
+check('any project member can create a channel', count(ChannelsData::forProject($cpid)) === 2);
+check('a member who neither created a channel nor owns the project cannot delete it', throws(fn () => ChannelsData::deleteChannel(2, $generalId)));
+check('the project owner can delete a channel they did not create', (function () use ($extraChannel) {
+    ChannelsData::deleteChannel(1, $extraChannel);
+    return Database::one('SELECT id FROM bla_project_channels WHERE id = ?', [$extraChannel]) === null;
+})());
+check('channel creator cannot be removed from their own channel', throws(fn () => ChannelsData::removeMember(1, $generalId, 1)));
+ChannelsData::removeMember(1, $generalId, 2);
+check('removeMember() works and the removed user loses read access', !ChannelsData::isMember(2, $generalId) && throws(fn () => ChannelsData::messagesSince(2, $generalId)));
+check('removeMember() rejects someone who is not actually in the channel (no silent no-op)', throws(fn () => ChannelsData::removeMember(1, $generalId, 2)));
+ProjectsData::delete(1, $cpid);
+check('deleting the project cascades its channels and messages', Database::one('SELECT id FROM bla_project_channels WHERE project_id = ?', [$cpid]) === null);
+
 echo "AI access tokens\n";
 [$aiId, $aiToken] = AiTokens::create(1, 'Test assistant');
 check('token verifies to the right user', AiTokens::verify($aiToken)['id'] === 1);
@@ -645,6 +687,25 @@ check('a user token can only reach their own data: an unrelated user cannot read
     throws(fn () => McpTools::call('projects_get', ['project_id' => $mp['id']], $outsider)));
 check('an unrelated user cannot read another user\'s file via MCP',
     throws(fn () => McpTools::call('files_read', ['path' => '/mcp/nested/note.txt'], $outsider)));
+
+$stageCol = McpTools::call('projects_create_column', ['project_id' => $mp['id'], 'name' => 'Phase 2'], $u1);
+check('projects_create_column adds a Kanban column (project stage)', $stageCol['column_id'] > 0
+    && in_array('Phase 2', array_column(ProjectsData::columns($mp['id']), 'name'), true));
+
+$ch = McpTools::call('chat_create_channel', ['project_id' => $mp['id'], 'name' => 'planning'], $u1);
+check('chat_create_channel returns a channel_id', $ch['channel_id'] > 0);
+check('chat_list_channels lists channels the caller belongs to', in_array('planning', array_column(McpTools::call('chat_list_channels', ['project_id' => $mp['id']], $u1)['channels'], 'name'), true));
+check('a project member who is not in the channel does not see it in chat_list_channels', !in_array($ch['channel_id'], array_column(McpTools::call('chat_list_channels', ['project_id' => $mp['id']], $u2)['channels'], 'id'), true));
+McpTools::call('chat_add_member', ['channel_id' => $ch['channel_id'], 'username' => 'anna'], $u1);
+check('chat_add_member lets the invited member see the channel', in_array($ch['channel_id'], array_column(McpTools::call('chat_list_channels', ['project_id' => $mp['id']], $u2)['channels'], 'id'), true));
+$postResult = McpTools::call('chat_post_message', ['channel_id' => $ch['channel_id'], 'body' => 'Kickoff scope: v1 covers X and Y.'], $u1);
+check('chat_post_message returns an id', $postResult['id'] > 0);
+$fetched = McpTools::call('chat_get_messages', ['channel_id' => $ch['channel_id']], $u2);
+check('chat_get_messages lets a fellow channel member read it back (this is how the AI "reads the chat")', $fetched['messages'][0]['body'] === 'Kickoff scope: v1 covers X and Y.');
+check('chat_get_messages is denied to someone outside the channel', throws(fn () => McpTools::call('chat_get_messages', ['channel_id' => $ch['channel_id']], $outsider)));
+McpTools::call('chat_remove_member', ['channel_id' => $ch['channel_id'], 'username' => 'anna'], $u1);
+check('chat_remove_member revokes read access', throws(fn () => McpTools::call('chat_get_messages', ['channel_id' => $ch['channel_id']], $u2)));
+check('chat_remove_member rejects a username not in the channel', throws(fn () => McpTools::call('chat_remove_member', ['channel_id' => $ch['channel_id'], 'username' => 'anna'], $u1)));
 
 $pdo = null;
 exec('rm -rf ' . escapeshellarg($tmp));

@@ -11,7 +11,7 @@ use PDO;
  */
 final class Schema
 {
-    public const VERSION = 7;
+    public const VERSION = 8;
 
     public static function create(PDO $pdo, string $driver): void
     {
@@ -366,6 +366,40 @@ final class Schema
                     FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE
                 )$tail",
                 $idx . 'idx_ai_tokens_user ON bla_ai_tokens (user_id)',
+            ],
+            8 => [
+                // Project chat (app/apps/projects/ChannelsData.php): topic channels within a project.
+                // Channel membership is deliberately separate from project membership — joining a
+                // project doesn't put you in every channel; an existing channel member invites you in.
+                "CREATE TABLE IF NOT EXISTS bla_project_channels (
+                    id $id,
+                    project_id $uid NOT NULL,
+                    name VARCHAR(64) NOT NULL,
+                    created_by $uid NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    FOREIGN KEY (project_id) REFERENCES bla_projects(id) ON DELETE CASCADE
+                )$tail",
+                $idx . 'idx_project_channels_project ON bla_project_channels (project_id)',
+                "CREATE TABLE IF NOT EXISTS bla_channel_members (
+                    id $id,
+                    channel_id $uid NOT NULL,
+                    user_id $uid NOT NULL,
+                    added_at DATETIME NOT NULL,
+                    FOREIGN KEY (channel_id) REFERENCES bla_project_channels(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE,
+                    UNIQUE (channel_id, user_id)
+                )$tail",
+                $idx . 'idx_channel_members_user ON bla_channel_members (user_id)',
+                "CREATE TABLE IF NOT EXISTS bla_channel_messages (
+                    id $id,
+                    channel_id $uid NOT NULL,
+                    user_id $uid NOT NULL,
+                    body TEXT NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    FOREIGN KEY (channel_id) REFERENCES bla_project_channels(id) ON DELETE CASCADE,
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE
+                )$tail",
+                $idx . 'idx_channel_messages_channel ON bla_channel_messages (channel_id, id)',
             ],
             default => [],
         };

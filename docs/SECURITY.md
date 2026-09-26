@@ -30,7 +30,8 @@
 | **Encryption at rest** | Optional: file *contents* encrypted on disk (libsodium `secretstream`) under their own passphrase, separate from your account password and the backup passphrase. Off by default — see below before deciding. |
 | **Apps** | Installed apps run in-process with no special privileges — a controller in an app still has to authenticate and authorize the request itself, the same as core code. Only install apps you trust; there's no sandboxing. |
 | **Projects** | Any project member can manage tasks/columns/comments; only the owner can rename/delete the project or change membership. Every check runs server-side, not just hidden in the page. |
-| **AI access (MCP)** | Bearer tokens (256 bits of random entropy, indexed SHA-256 lookup), revocable any time. A token is scoped to exactly one person's own data — files, calendar, contacts, projects — and can never reach another user's data or any admin function, enforced by the same authorization checks the web UI itself uses. There's no sandboxing of what a connected AI does *within* that scope, so a token deserves the same care as a password. |
+| **Project chat** | Channel membership is separate from project membership — joining a project doesn't put you in every channel. Only the channel creator or the project owner can remove someone, delete the channel, or delete another person's message; the owner can do this even for a channel they haven't personally joined, since that check is against project ownership, not channel membership. |
+| **AI access (MCP)** | Bearer tokens (256 bits of random entropy, indexed SHA-256 lookup), revocable any time. A token is scoped to exactly one person's own data — files, calendar, contacts, projects, chat — and can never reach another user's data or any admin function, enforced by the same authorization checks the web UI itself uses. There's no sandboxing of what a connected AI does *within* that scope, so a token deserves the same care as a password. |
 
 ## What you should do after installing
 
@@ -61,12 +62,13 @@
 
 An independent security review (an AI pass covering auth, sessions, CSRF, path safety, WebDAV/CalDAV
 auth boundaries, share-link tokens and secret-at-rest handling) found no critical or high-severity
-issues as of Stage 9 (v0.8.0). The Stage 10/11 additions (Projects, the MCP server and AI access
-tokens) went through the same code-review process, which caught and fixed two real bugs before
-release — a project-membership oracle in the AI's task-assignment tool, and a malformed-request
-crash in the MCP endpoint. That's still one reviewer, not a substitute for a second set of human eyes
-— get one before this holds data you'd genuinely miss, and especially before relying on the MCP
-server with a real AI assistant.
+issues as of Stage 9 (v0.8.0). Every stage since (Projects, the MCP server and AI access tokens,
+project chat) went through the same code-review process before release, which has caught and fixed
+real bugs each time — most recently, in Stage 12: the project owner being unable to moderate a
+channel they hadn't personally joined, and the chat page not checking that a requested channel
+actually belonged to the requested project. That's still one reviewer, not a substitute for a second
+set of human eyes — get one before this holds data you'd genuinely miss, and especially before
+relying on the MCP server with a real AI assistant.
 
 ## Emergency: admin locked out of 2FA and recovery codes are lost
 

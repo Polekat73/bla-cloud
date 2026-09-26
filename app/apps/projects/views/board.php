@@ -21,6 +21,7 @@ foreach ($comments as $c) {
   <div class="page-head">
     <div><p class="eyebrow"><a href="<?= e(url('projects')) ?>">Projects</a></p><h1><?= e($project['name']) ?></h1></div>
     <div class="files__actions">
+      <a class="btn btn--ghost" href="<?= e(url('projects.chat', ['project_id' => $project['id']])) ?>"><?= icon('chat') ?> Chat</a>
       <button type="button" class="btn btn--ghost" data-open="dlg-members"><?= icon('users') ?> Members</button>
       <?php if ($isOwner): ?>
       <form method="post" action="<?= e(url('projects.delete')) ?>" data-confirm="Delete “<?= e($project['name']) ?>” and all of its tasks? This cannot be undone.">

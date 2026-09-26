@@ -438,6 +438,76 @@
     });
   }
 
+  // ---------- Project chat ----------
+  const chatRoot = $('[data-chat]');
+  if (chatRoot) initChat(chatRoot);
+
+  function initChat(root) {
+    const csrf = document.body.dataset.csrf;
+    const ds = root.dataset;
+    const channelId = ds.channelId;
+    if (!channelId || channelId === '0') return;
+    let lastId = parseInt(ds.lastId, 10) || 0;
+    const meId = ds.meId;
+    const list = $('[data-message-list]', root);
+    const form = $('[data-chat-form]', root);
+
+    function escapeHtml(s) { return s.replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+
+    function renderMessage(m) {
+      const li = document.createElement('li');
+      li.className = 'chat-message' + (String(m.user_id) === meId ? ' is-own' : '');
+      li.dataset.message = ''; li.dataset.messageId = m.id;
+      let html = '<div class="chat-message__meta">' + escapeHtml(m.name) + ' · ' + escapeHtml(m.when) + '</div>'
+        + '<div class="chat-message__body">' + escapeHtml(m.body) + '</div>';
+      if (String(m.user_id) === meId) {
+        html += '<button type="button" class="chat-message__del" data-delete-message data-message-id="' + m.id + '" title="Delete">'
+          + '<svg class="icon" aria-hidden="true"><use href="#i-x"></use></svg></button>';
+      }
+      li.innerHTML = html;
+      list.appendChild(li);
+    }
+
+    async function poll() {
+      try {
+        const r = await fetch(ds.messagesUrl + '?channel_id=' + channelId + '&since_id=' + lastId, { headers: { Accept: 'application/json' } });
+        const j = await r.json();
+        if (!j.ok || !j.messages.length) return;
+        const wasAtBottom = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+        j.messages.forEach((m) => { renderMessage(m); lastId = m.id; });
+        if (wasAtBottom) list.scrollTop = list.scrollHeight;
+      } catch { /* transient network hiccup — next poll retries */ }
+    }
+    list.scrollTop = list.scrollHeight;
+    const poller = setInterval(poll, 3000);
+    window.addEventListener('beforeunload', () => clearInterval(poller));
+
+    if (form) {
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const body = $('textarea', form).value;
+        if (!body.trim()) return;
+        const fd = new FormData();
+        fd.append('_csrf', csrf); fd.append('project_id', ds.projectId); fd.append('channel_id', channelId); fd.append('body', body);
+        try {
+          const r = await fetch(ds.postUrl, { method: 'POST', body: fd, headers: { Accept: 'application/json', 'X-Requested-With': 'fetch' } });
+          const j = await r.json().catch(() => ({ ok: false, error: 'Unexpected server response.' }));
+          if (!j.ok) throw new Error(j.error || 'Something went wrong.');
+          $('textarea', form).value = '';
+          await poll();
+        } catch (err) { alert(err.message); }
+      });
+    }
+
+    root.addEventListener('click', (e) => {
+      const b = e.target.closest('[data-delete-message]');
+      if (!b) return;
+      if (!window.confirm('Delete this message?')) return;
+      $('[data-df=message_id]', document.getElementById('form-delete-message')).value = b.dataset.messageId;
+      document.getElementById('form-delete-message').submit();
+    });
+  }
+
   // ---------- Files ----------
   const files = $('[data-files]');
   if (files) initFiles(files);
