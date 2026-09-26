@@ -5,7 +5,7 @@
  * as a side effect of someone visiting the site. Wire it up with, for example:
  *
  *   crontab -e, then add (runs every 15 minutes):
- *   0,15,30,45 * * * * php /path/to/bla-cloud/tools/cron.php
+ *   0,15,30,45 * * * * php /path/to/haven/tools/cron.php
  *
  * Each of those jobs already limits itself to running at most once an hour (or once a day/week
  * for backups), so calling this more often than that is harmless — it just checks and exits.
@@ -25,7 +25,7 @@ use BlaCloud\Maintenance;
 use BlaCloud\Schema;
 
 if (!Config::isInstalled()) {
-    fwrite(STDERR, "BLA-Cloud is not installed yet — nothing to do.\n");
+    fwrite(STDERR, "Haven is not installed yet — nothing to do.\n");
     exit(0);
 }
 

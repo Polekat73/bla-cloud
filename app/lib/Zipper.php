@@ -101,7 +101,7 @@ final class Zipper
                 @unlink($t);
             }
         }
-        $label = count($paths) === 1 ? basename(Storage::normalize($paths[0])) : 'BLA-Cloud files';
+        $label = count($paths) === 1 ? basename(Storage::normalize($paths[0])) : 'Haven files';
         return [$tmp, $label . '.zip'];
     }
 

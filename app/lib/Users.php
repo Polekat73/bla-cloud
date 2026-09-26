@@ -150,7 +150,7 @@ final class Users
         $err = null;
         if ($email && $u['email'] !== '' && Mailer::enabled()) {
             $inviter = $by['display_name'] ?: $by['username'];
-            $name = (string) Config::get('instance_name', 'BLA-Cloud');
+            $name = (string) Config::get('instance_name', 'Haven');
             $err = Mailer::send($u['email'], "You're invited to $name", "Welcome to $name", [
                 "Hi {$u['display_name']},",
                 "$inviter has created an account for you on $name — a private cloud for your files. Your username is: {$u['username']}",
@@ -168,7 +168,7 @@ final class Users
         $mailed = false;
         $err = null;
         if ($email && $u['email'] !== '' && Mailer::enabled()) {
-            $name = (string) Config::get('instance_name', 'BLA-Cloud');
+            $name = (string) Config::get('instance_name', 'Haven');
             $err = Mailer::send($u['email'], "Reset your $name password", 'Reset your password', [
                 "Hi {$u['display_name']},",
                 "Someone (hopefully you) asked to reset the password for {$u['username']} on $name.",

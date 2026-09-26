@@ -1,4 +1,4 @@
-/* BLA-Cloud front-end. No frameworks, no inline scripts (strict CSP). */
+/* Haven front-end. No frameworks, no inline scripts (strict CSP). */
 (function () {
   'use strict';
 
@@ -77,7 +77,7 @@
   }));
   $$('[data-download-codes]').forEach((b) => b.addEventListener('click', () => {
     const codes = $$('[data-codes] code').map((c) => c.textContent.trim());
-    const text = 'BLA-Cloud recovery codes\nCreated: ' + new Date().toLocaleString()
+    const text = 'Haven recovery codes\nCreated: ' + new Date().toLocaleString()
       + '\nEach code can be used once if you lose access to your authenticator app.\n\n' + codes.join('\n') + '\n';
     const a = document.createElement('a');
     a.href = URL.createObjectURL(new Blob([text], { type: 'text/plain' }));

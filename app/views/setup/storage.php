@@ -12,7 +12,7 @@ $proxyIps = implode(', ', $setup['trusted_proxies'] ?? ($fwd ? [$_SERVER['REMOTE
   <?= csrf_field() ?>
   <label class="field">
     <span>Name your cloud</span>
-    <input name="instance_name" maxlength="64" value="<?= e($setup['instance_name'] ?? 'BLA-Cloud') ?>">
+    <input name="instance_name" maxlength="64" value="<?= e($setup['instance_name'] ?? 'Haven') ?>">
     <small>Shown in your authenticator app and the browser tab.</small>
   </label>
 
@@ -23,7 +23,7 @@ $proxyIps = implode(', ', $setup['trusted_proxies'] ?? ($fwd ? [$_SERVER['REMOTE
   </label>
   <?php if ($inside): ?>
     <div class="note note--warn"><?= icon('alert') ?>
-      <span>This folder is inside your website folder. BLA-Cloud locks it down on Apache automatically. If you can, choose a folder one level up (outside <code>public_html</code>) — on Nginx this is strongly recommended.</span>
+      <span>This folder is inside your website folder. Haven locks it down on Apache automatically. If you can, choose a folder one level up (outside <code>public_html</code>) — on Nginx this is strongly recommended.</span>
     </div>
   <?php endif; ?>
 

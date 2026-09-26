@@ -39,7 +39,7 @@ final class Maintenance
                         Audit::log((int) $u['id'], 'maintenance', "removed $trashed old trash item(s), $versions old version(s)");
                     }
                 } catch (\Throwable $e) {
-                    error_log('[BLA-Cloud] maintenance for user ' . $u['id'] . ': ' . $e->getMessage());
+                    error_log('[Haven] maintenance for user ' . $u['id'] . ': ' . $e->getMessage());
                 }
             }
             Database::run('DELETE FROM bla_login_attempts WHERE created_at < ?', [gmdate('Y-m-d H:i:s', time() - 86400)]);
@@ -86,7 +86,7 @@ final class Maintenance
             if ($error === null) {
                 Database::run('UPDATE bla_calendar_objects SET reminder_sent_at = ? WHERE id = ?', [$now, $row['id']]);
             } else {
-                error_log('[BLA-Cloud] reminder email for calendar object ' . $row['id'] . ' failed: ' . $error);
+                error_log('[Haven] reminder email for calendar object ' . $row['id'] . ' failed: ' . $error);
             }
         }
     }

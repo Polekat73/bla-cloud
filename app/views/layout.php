@@ -19,7 +19,7 @@ include __DIR__ . '/partials/head.php';
   <button class="icon-btn topbar__menu" type="button" data-toggle-nav aria-label="Menu"><?= icon('menu') ?></button>
   <a class="brand" href="<?= e(url('files')) ?>">
     <img src="<?= e(asset('img/logo.webp')) ?>" alt="" width="36" height="36">
-    <span class="brand__name">BLA<span class="brand__dash">-</span>Cloud</span>
+    <span class="brand__name">Haven</span>
   </a>
   <?php if ($me): ?>
   <div class="topbar__user">

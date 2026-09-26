@@ -33,7 +33,7 @@ final class Mailer
                 : self::phpMail($to, $subject, $text, $html);
             return null;
         } catch (\Throwable $e) {
-            error_log('[BLA-Cloud] mail to ' . $to . ' failed: ' . $e->getMessage());
+            error_log('[Haven] mail to ' . $to . ' failed: ' . $e->getMessage());
             return $e->getMessage();
         }
     }
@@ -42,7 +42,7 @@ final class Mailer
 
     public static function render(string $heading, array $paragraphs, ?string $buttonText, ?string $buttonUrl): array
     {
-        $name = (string) Config::get('instance_name', 'BLA-Cloud');
+        $name = (string) Config::get('instance_name', 'Haven');
         $text = $heading . "\n\n" . implode("\n\n", $paragraphs);
         if ($buttonText && $buttonUrl) {
             $text .= "\n\n" . $buttonText . ":\n" . $buttonUrl;

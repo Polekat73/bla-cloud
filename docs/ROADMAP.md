@@ -1,4 +1,4 @@
-# BLA-Cloud roadmap
+# Haven roadmap
 
 Built in stages, and each stage is tested before the next begins.
 
@@ -21,7 +21,7 @@ Built in stages, and each stage is tested before the next begins.
 Before real-world use (after Stage 3–4): an independent security review.
 
 **Stage 4 notes:** the WebDAV/CalDAV/CardDAV server is hand-written rather than `sabre/dav`, to keep
-BLA-Cloud dependency-free (unzip and upload, no Composer/`vendor/` build step). It covers what real
+Haven dependency-free (unzip and upload, no Composer/`vendor/` build step). It covers what real
 clients (Apple Calendar/Contacts, Thunderbird, DAVx5, Windows/macOS file mounting) actually use day
 to day. Known gaps versus a full implementation: no `sync-collection` REPORT (clients fall back to
 `getctag`, which all of the above support), and `calendar-query`/`addressbook-query` don't filter by

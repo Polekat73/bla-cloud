@@ -26,7 +26,7 @@
     <form method="post" action="<?= e(url('admin.backups.enable')) ?>" class="form">
       <?= csrf_field() ?>
       <label class="field"><span>Save backups to</span>
-        <input name="dir" required placeholder="/home/youruser/bla-cloud-backups" class="mono" spellcheck="false"></label>
+        <input name="dir" required placeholder="/home/youruser/haven-backups" class="mono" spellcheck="false"></label>
       <p class="hint">Ideally outside both the website folder and the data folder, so one lost folder can't take out your backups too.</p>
       <div class="grid-2">
         <label class="field"><span>How often</span>

@@ -1,4 +1,4 @@
-# How BLA-Cloud keeps your data safe
+# How Haven keeps your data safe
 
 ## Built in (Stage 1)
 
@@ -35,14 +35,14 @@
 
 ## What you should do after installing
 
-1. **Use HTTPS.** BLA-Cloud warns you on the status page if you're not.
+1. **Use HTTPS.** Haven warns you on the status page if you're not.
 2. **Save your recovery codes** somewhere safe that isn't your phone.
 3. **Back up `config/config.php`.** It holds the key that encrypts your 2FA secrets, backup passphrase and encryption-at-rest passphrase. Without it, all three have to be reset/reconfigured.
 4. Optionally make `config/config.php` read-only (`chmod 440`).
 5. Keep PHP updated through your hosting panel.
 6. **Turn on Backups before you put anything you'd miss on it.** Pick a destination outside both the
    website folder and the data folder (docs/INSTALL.md has the details), and write the passphrase down
-   somewhere safe — it's the only way to restore, and BLA-Cloud never stores it in the clear.
+   somewhere safe — it's the only way to restore, and Haven never stores it in the clear.
 7. **Decide on Encryption at rest now, not later.** It only protects files saved *after* it's turned on
    (there's a separate "Encrypt existing files now" migration for what's already there, which needs
    backups configured first). Turning it on after months of real data means an extra bulk-migration

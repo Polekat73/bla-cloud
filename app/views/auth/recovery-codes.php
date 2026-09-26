@@ -11,7 +11,7 @@
 
   <div class="actions actions--left">
     <button type="button" class="btn btn--secondary" data-download-codes
-            data-filename="<?= e(\BlaCloud\Config::get('instance_name', 'BLA-Cloud')) ?>-recovery-codes.txt"><?= icon('download') ?> Download</button>
+            data-filename="<?= e(\BlaCloud\Config::get('instance_name', 'Haven')) ?>-recovery-codes.txt"><?= icon('download') ?> Download</button>
     <button type="button" class="btn btn--ghost" data-copy="<?= e(implode("\n", $codes)) ?>"><?= icon('copy') ?> Copy</button>
     <button type="button" class="btn btn--ghost" data-print><?= icon('file') ?> Print</button>
   </div>

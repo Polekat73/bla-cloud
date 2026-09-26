@@ -68,7 +68,7 @@ final class AdminSettingsController
             return 'Please enter a valid “From” email address.';
         }
         $in['mail_from'] = $from;
-        $in['mail_from_name'] = mb_substr(str_replace(["\r", "\n"], '', trim(Request::post('mail_from_name', 'BLA-Cloud'))), 0, 64);
+        $in['mail_from_name'] = mb_substr(str_replace(["\r", "\n"], '', trim(Request::post('mail_from_name', 'Haven'))), 0, 64);
         $host = trim(Request::post('smtp_host'));
         if ($host !== '' && !preg_match('/^[A-Za-z0-9.\-]+$/', $host)) {
             return 'The SMTP server name looks wrong.';
@@ -97,8 +97,8 @@ final class AdminSettingsController
         }
         Security::requireCsrf();
         $to = trim(Request::post('to')) ?: $me['email'];
-        $err = Mailer::send($to, 'BLA-Cloud test email', 'Email works!', [
-            'This is a test message from your BLA-Cloud. If you can read it, invitations, password resets and share notifications will reach people too.',
+        $err = Mailer::send($to, 'Haven test email', 'Email works!', [
+            'This is a test message from your Haven. If you can read it, invitations, password resets and share notifications will reach people too.',
         ]);
         Session::flash($err ? 'error' : 'success', $err ? 'Test email failed: ' . $err : "Test email sent to $to. Check the inbox (and spam folder).");
         View::redirect('admin.settings');

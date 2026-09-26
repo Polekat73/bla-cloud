@@ -29,7 +29,7 @@ final class Tools
     {
         $str = static fn (string $desc) => ['type' => 'string', 'description' => $desc];
         return [
-            'files_list' => ['Lists the files and folders inside a folder in your BLA-Cloud files.', [
+            'files_list' => ['Lists the files and folders inside a folder in your Haven files.', [
                 'type' => 'object', 'properties' => ['path' => $str('Folder path, e.g. "/Photos". Empty or omitted means the top level.')],
             ]],
             'files_read' => ['Reads a text file\'s contents. Files over 256 KB or that are not text are rejected.', [
@@ -133,7 +133,7 @@ final class Tools
             'projects_add_comment' => ['Adds a comment to a task.', [
                 'type' => 'object', 'required' => ['task_id', 'body'], 'properties' => ['task_id' => ['type' => 'integer'], 'body' => $str('Comment text.')],
             ]],
-            'projects_add_member' => ['Adds another BLA-Cloud user to a project you own.', [
+            'projects_add_member' => ['Adds another Haven user to a project you own.', [
                 'type' => 'object', 'required' => ['project_id', 'username'],
                 'properties' => ['project_id' => ['type' => 'integer'], 'username' => $str('Their username.')],
             ]],

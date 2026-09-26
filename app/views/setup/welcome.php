@@ -4,7 +4,7 @@ $blocked = \BlaCloud\Installer::hasBlockingProblem($checks);
 $labels = ['ok' => 'Ready', 'warn' => 'Heads-up', 'fail' => 'Needs fixing'];
 ?>
 <h2>Let's get your private cloud running</h2>
-<p class="lead">This takes about three minutes. First, a quick check that your server has everything BLA-Cloud needs.</p>
+<p class="lead">This takes about three minutes. First, a quick check that your server has everything Haven needs.</p>
 
 <ul class="checks">
   <?php foreach ($checks as $c): ?>

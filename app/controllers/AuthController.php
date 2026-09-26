@@ -106,7 +106,7 @@ final class AuthController
             $error = 'That code did not match. Make sure you scanned the new code, then enter the 6 digits shown right now.';
         }
 
-        $issuer = (string) Config::get('instance_name', 'BLA-Cloud');
+        $issuer = (string) Config::get('instance_name', 'Haven');
         View::render('auth/2fa-setup', [
             'title'  => 'Set up two-step verification',
             'secret' => $secret,

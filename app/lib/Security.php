@@ -122,7 +122,7 @@ final class Security
         if ($username !== '' && stripos($password, $username) !== false) {
             return 'Your password should not contain your username.';
         }
-        $common = ['password', '123456', 'qwerty', 'letmein', 'welcome', 'admin', 'iloveyou', 'nextcloud', 'blacloud'];
+        $common = ['password', '123456', 'qwerty', 'letmein', 'welcome', 'admin', 'iloveyou', 'nextcloud', 'haven'];
         foreach ($common as $c) {
             if (stripos($password, $c) !== false && mb_strlen($password) < 16) {
                 return 'That password is too easy to guess. Try a longer phrase.';

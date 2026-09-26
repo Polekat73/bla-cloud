@@ -10,7 +10,7 @@ use BlaCloud\Request;
 use BlaCloud\Security;
 use BlaCloud\View;
 
-/** The first-run setup wizard. Only reachable while BLA-Cloud is not installed yet. */
+/** The first-run setup wizard. Only reachable while Haven is not installed yet. */
 final class SetupController
 {
     private const STEPS = ['welcome', 'database', 'storage', 'account'];
@@ -51,7 +51,7 @@ final class SetupController
     private function render(string $step, array $vars): void
     {
         View::render('setup/' . $step, $vars + [
-            'title' => 'Set up BLA-Cloud',
+            'title' => 'Set up Haven',
             'step'  => $step,
             'steps' => self::STEPS,
         ], 'layout-setup');
@@ -102,7 +102,7 @@ final class SetupController
             $pdo = Database::connectWith($db);
             $pdo->query('SELECT 1');
         } catch (\PDOException $e) {
-            error_log('[BLA-Cloud] setup db test: ' . $e->getMessage());
+            error_log('[Haven] setup db test: ' . $e->getMessage());
             return ['Could not connect to the database. Double-check the details from your hosting panel. (' . self::friendlyDbError($e) . ')'];
         }
         $_SESSION['setup']['db'] = $db;
@@ -123,9 +123,9 @@ final class SetupController
     private function saveStorage(): array
     {
         $dir  = trim(Request::post('data_dir'));
-        $name = trim(Request::post('instance_name', 'BLA-Cloud'));
+        $name = trim(Request::post('instance_name', 'Haven'));
         $_SESSION['setup']['data_dir'] = $dir;
-        $_SESSION['setup']['instance_name'] = mb_substr($name ?: 'BLA-Cloud', 0, 64);
+        $_SESSION['setup']['instance_name'] = mb_substr($name ?: 'Haven', 0, 64);
         try {
             Installer::prepareDataDir($dir);
         } catch (\InvalidArgumentException $e) {
@@ -180,7 +180,7 @@ final class SetupController
             Installer::install([
                 'db'              => $_SESSION['setup']['db'],
                 'data_dir'        => $_SESSION['setup']['data_dir'],
-                'instance_name'   => $_SESSION['setup']['instance_name'] ?? 'BLA-Cloud',
+                'instance_name'   => $_SESSION['setup']['instance_name'] ?? 'Haven',
                 'trusted_proxies' => $_SESSION['setup']['trusted_proxies'] ?? [],
                 'username'        => $username,
                 'display_name'    => mb_substr($display, 0, 128),
@@ -188,7 +188,7 @@ final class SetupController
                 'password'        => $pass,
             ]);
         } catch (\Throwable $e) {
-            error_log('[BLA-Cloud] install failed: ' . $e->getMessage());
+            error_log('[Haven] install failed: ' . $e->getMessage());
             return ['Setup could not finish: ' . $e->getMessage()];
         }
         $_SESSION = [];

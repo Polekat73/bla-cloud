@@ -31,7 +31,7 @@ final class Session
         }
 
         $secure = Request::isHttps();
-        session_name($secure ? '__Host-blacloud' : 'blacloud');
+        session_name($secure ? '__Host-haven' : 'haven');
         session_set_cookie_params([
             'lifetime' => 0,
             'path'     => '/',

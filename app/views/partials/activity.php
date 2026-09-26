@@ -1,6 +1,6 @@
 <?php
 $labels = [
-    'install.completed' => 'BLA-Cloud installed', 'login.success' => 'Signed in', 'login.failed' => 'Failed sign-in',
+    'install.completed' => 'Haven installed', 'login.success' => 'Signed in', 'login.failed' => 'Failed sign-in',
     'login.throttled' => 'Sign-in blocked (too many attempts)', 'login.password_ok_enroll_required' => 'Password OK, 2FA setup required',
     '2fa.failed' => 'Wrong verification code', '2fa.enabled' => 'Two-step verification turned on',
     '2fa.disabled' => 'Two-step verification turned off', '2fa.recovery_codes_generated' => 'New recovery codes created',
@@ -14,7 +14,7 @@ $labels = [
     'user.invite' => 'Sent an invitation', 'user.reset_link' => 'Created a password reset link', 'user.reset_2fa' => 'Reset two-step verification',
     'invite.accepted' => 'Accepted invitation', 'password.reset' => 'Reset password by email link', 'password.reset_requested' => 'Requested a password reset',
     'settings.update' => 'Changed settings', 'share.user' => 'Shared with a person', 'share.link' => 'Created a public link',
-    'share.delete' => 'Stopped sharing', 'share.email' => 'Emailed a link', 'share.leave' => 'Left a share', 'share.link_unlocked' => 'Link password entered', 'upgrade.code' => 'BLA-Cloud updated', 'maintenance' => 'Automatic cleanup',
+    'share.delete' => 'Stopped sharing', 'share.email' => 'Emailed a link', 'share.leave' => 'Left a share', 'share.link_unlocked' => 'Link password entered', 'upgrade.code' => 'Haven updated', 'maintenance' => 'Automatic cleanup',
     'apppassword.created' => 'New app password', 'apppassword.revoked' => 'App password revoked',
     'backup.created' => 'Backup created', 'backup.failed' => 'Backup failed', 'backup.verified' => 'Backup verified',
     'backup.restored' => 'Restored from backup', 'backup.enabled' => 'Backups turned on', 'backup.disabled' => 'Backups turned off',

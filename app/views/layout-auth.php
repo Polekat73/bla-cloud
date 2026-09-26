@@ -6,7 +6,7 @@
     <div class="auth__brand">
       <img src="<?= e(asset('img/logo.webp')) ?>" alt="Best Life Apps" width="104" height="104">
       <p class="eyebrow">Best Life Apps</p>
-      <h1 class="auth__title">BLA-Cloud</h1>
+      <h1 class="auth__title">Haven</h1>
     </div>
     <?php include __DIR__ . '/partials/flash.php'; ?>
     <?= $content ?>

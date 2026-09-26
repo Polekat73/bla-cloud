@@ -1,6 +1,6 @@
 <?php
 /**
- * BLA-Cloud unit tests. Run from the command line:  php tests/run.php
+ * Haven unit tests. Run from the command line:  php tests/run.php
  */
 declare(strict_types=1);
 
@@ -68,7 +68,7 @@ check('reject 2 steps drift', Totp::verify($secret, Totp::codeAt($secret, Totp::
 check('block replay of used step', Totp::verify($secret, $code, Totp::currentStep($now), $now) === null);
 check('reject wrong code', Totp::verify($secret, '000000', 0, $now) === null || $code === '000000');
 check('accept spaces "123 456" style', Totp::verify($secret, substr($code, 0, 3) . ' ' . substr($code, 3), 0, $now) !== null);
-check('otpauth URI', str_starts_with(Totp::uri($secret, 'me', 'BLA-Cloud'), 'otpauth://totp/BLA-Cloud:me?secret='));
+check('otpauth URI', str_starts_with(Totp::uri($secret, 'me', 'Haven'), 'otpauth://totp/Haven:me?secret='));
 
 echo "Path safety\n";
 check('normalize simple', Storage::normalize('a/b/c') === '/a/b/c');

@@ -35,7 +35,7 @@ final class McpController
         $user = $this->authenticate();
         if (!$user) {
             http_response_code(401);
-            header('WWW-Authenticate: Bearer realm="BLA-Cloud MCP"');
+            header('WWW-Authenticate: Bearer realm="Haven MCP"');
             echo json_encode(['jsonrpc' => '2.0', 'id' => null, 'error' => ['code' => -32000, 'message' => 'Missing or invalid AI access token.']]);
             return;
         }
@@ -77,7 +77,7 @@ final class McpController
                 'initialize' => [
                     'protocolVersion' => self::PROTOCOL_VERSION,
                     'capabilities' => ['tools' => new \stdClass()],
-                    'serverInfo' => ['name' => 'BLA-Cloud', 'title' => 'BLA-Cloud (' . $user['username'] . ')', 'version' => BLA_VERSION],
+                    'serverInfo' => ['name' => 'Haven', 'title' => 'Haven (' . $user['username'] . ')', 'version' => BLA_VERSION],
                 ],
                 'ping' => new \stdClass(),
                 'tools/list' => ['tools' => (static function () {

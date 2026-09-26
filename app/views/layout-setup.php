@@ -10,7 +10,7 @@ $current = array_search($step ?? 'welcome', $steps ?? [], true);
     <img src="<?= e(asset('img/logo.webp')) ?>" alt="Best Life Apps" width="88" height="88">
     <div>
       <p class="eyebrow">Setup wizard</p>
-      <h1>Welcome to BLA-Cloud</h1>
+      <h1>Welcome to Haven</h1>
     </div>
   </header>
 
@@ -29,7 +29,7 @@ $current = array_search($step ?? 'welcome', $steps ?? [], true);
     <?php include __DIR__ . '/partials/flash.php'; ?>
     <?= $content ?>
   </section>
-  <p class="setup__foot">BLA-Cloud <?= e(BLA_VERSION) ?> · by Best Life Apps</p>
+  <p class="setup__foot">Haven <?= e(BLA_VERSION) ?> · by Best Life Apps</p>
 </main>
 <script src="<?= e(asset('js/app.js')) ?>"></script>
 </body>

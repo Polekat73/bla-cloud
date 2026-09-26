@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 const BLA_VERSION = '0.11.0';
-const BLA_NAME    = 'BLA-Cloud';
+const BLA_NAME    = 'Haven';
 define('BLA_ROOT', dirname(__DIR__));
 define('BLA_APP', __DIR__);
 
@@ -38,7 +38,7 @@ ini_set('log_errors', '1');
 error_reporting(E_ALL);
 
 set_exception_handler(static function (Throwable $e): void {
-    error_log('[BLA-Cloud] ' . $e::class . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
+    error_log('[Haven] ' . $e::class . ': ' . $e->getMessage() . ' @ ' . $e->getFile() . ':' . $e->getLine());
     if (!headers_sent()) {
         http_response_code(500);
     }

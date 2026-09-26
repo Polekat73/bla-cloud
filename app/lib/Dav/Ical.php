@@ -53,10 +53,10 @@ final class Ical
      */
     public static function buildEvent(array $f): string
     {
-        $uid = ($f['uid'] ?? '') ?: bin2hex(random_bytes(16)) . '@bla-cloud';
+        $uid = ($f['uid'] ?? '') ?: bin2hex(random_bytes(16)) . '@haven';
         $fmt = $f['allDay'] ? 'Ymd' : 'Ymd\THis\Z';
         $lines = [
-            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Best Life Apps//BLA-Cloud//EN', 'BEGIN:VEVENT',
+            'BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Best Life Apps//Haven//EN', 'BEGIN:VEVENT',
             'UID:' . self::escape($uid),
             'DTSTAMP:' . gmdate('Ymd\THis\Z'),
             ($f['allDay'] ? 'DTSTART;VALUE=DATE:' : 'DTSTART:') . $f['start']->format($fmt),

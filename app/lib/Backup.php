@@ -107,7 +107,7 @@ final class Backup
         try {
             self::run('auto');
         } catch (\Throwable $e) {
-            error_log('[BLA-Cloud] scheduled backup failed: ' . $e->getMessage());
+            error_log('[Haven] scheduled backup failed: ' . $e->getMessage());
         }
     }
 
@@ -122,7 +122,7 @@ final class Backup
         }
         @set_time_limit(600);
         $scratch = self::scratchDir();
-        $name = 'bla-cloud-' . $kind . '-' . gmdate('Ymd-His') . '.bcbackup';
+        $name = 'haven-' . $kind . '-' . gmdate('Ymd-His') . '.bcbackup';
         try {
             $dumpPath = self::dumpDatabase($scratch);
             $zipPath = self::buildZip($scratch, $dumpPath);

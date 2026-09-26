@@ -31,7 +31,7 @@ final class DavController
 
         $user = $this->authenticate();
         if (!$user) {
-            header('WWW-Authenticate: Basic realm="BLA-Cloud"');
+            header('WWW-Authenticate: Basic realm="Haven"');
             http_response_code(401);
             header('Content-Type: text/plain; charset=utf-8');
             echo "Authentication required. Use an app password (Settings > Sync), not your account password.\n";
@@ -117,7 +117,7 @@ final class DavController
         $ms = new Xml();
         $ms->addFound(self::baseHref() . '/', [
             '{DAV:}resourcetype'         => new Raw('<d:collection/>'),
-            '{DAV:}displayname'          => 'BLA-Cloud',
+            '{DAV:}displayname'          => 'Haven',
             '{DAV:}current-user-principal' => new Raw('<d:href>' . Xml::e(self::baseHref() . '/principals/current-user/') . '</d:href>'),
         ]);
         $ms->send();

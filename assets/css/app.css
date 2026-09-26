@@ -1,5 +1,5 @@
 /* ==========================================================
-   BLA-Cloud — Best Life Apps brand
+   Haven — Best Life Apps brand
    ========================================================== */
 
 @font-face { font-family: "Cinzel"; font-weight: 600; font-style: normal; font-display: swap;
@@ -233,7 +233,6 @@ body.setup, body.auth {
 .brand { display: flex; align-items: center; gap: 0.6rem; text-decoration: none; }
 .brand img { filter: drop-shadow(0 0 10px rgba(48,199,99,.25)); }
 .brand__name { font-family: var(--font-display); color: var(--gold); font-size: 1.2rem; letter-spacing: 0.1em; }
-.brand__dash { color: var(--emerald); }
 .topbar__user { margin-left: auto; display: flex; align-items: center; gap: 0.6rem; }
 .topbar__name { color: var(--text); }
 .avatar { display: grid; place-items: center; width: 34px; height: 34px; border-radius: 50%; background: var(--forest); color: var(--text-strong); font-family: var(--font-display); border: 1px solid rgba(48,199,99,.4); }

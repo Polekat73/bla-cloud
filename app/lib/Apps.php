@@ -8,7 +8,7 @@ namespace BlaCloud;
  *
  * An app is a self-contained folder (its own controller, views and namespace segment —
  * see app/apps/README.md for the manifest format). Installing one is manual file placement
- * (unzip into app/apps/, same as installing BLA-Cloud itself); this class only discovers what's
+ * (unzip into app/apps/, same as installing Haven itself); this class only discovers what's
  * already on disk and lets an admin turn each one on or off. A disabled app's routes 404 and its
  * nav link disappears, but nothing about it is uninstalled — its data (if any) is untouched.
  */
@@ -33,7 +33,7 @@ final class Apps
             }
             $m = require $file;
             if (!is_array($m) || !isset($m['id'], $m['name'], $m['routes']) || $m['id'] !== basename($dir)) {
-                error_log("[BLA-Cloud] skipping invalid app manifest: $file");
+                error_log("[Haven] skipping invalid app manifest: $file");
                 continue;
             }
             $m['dir'] = $dir;

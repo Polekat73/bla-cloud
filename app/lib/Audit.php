@@ -13,7 +13,7 @@ final class Audit
                 [$userId, substr($action, 0, 64), mb_substr($detail, 0, 500), Request::clientIp(), Database::now()]
             );
         } catch (\Throwable $e) {
-            error_log('[BLA-Cloud] audit log failed: ' . $e->getMessage());
+            error_log('[Haven] audit log failed: ' . $e->getMessage());
         }
     }
 

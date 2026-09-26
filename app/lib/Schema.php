@@ -463,7 +463,7 @@ final class Schema
                 }
             }
         } catch (\Throwable $e) {
-            error_log('[BLA-Cloud] could not record schema version: ' . $e->getMessage());
+            error_log('[Haven] could not record schema version: ' . $e->getMessage());
         }
     }
 

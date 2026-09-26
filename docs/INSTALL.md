@@ -1,4 +1,4 @@
-# Installing BLA-Cloud
+# Installing Haven
 
 Pick the path that matches where you're hosting:
 
@@ -12,19 +12,19 @@ Pick the path that matches where you're hosting:
 
 1. **Turn on HTTPS** for your domain or subdomain. Most panels have a free "Let's Encrypt" / "SSL" button.
 2. **Choose PHP 8.2 or newer** for the site. Look for "Select PHP version" or "MultiPHP Manager" in your panel.
-3. **Upload the files.** Unzip BLA-Cloud on your computer, then upload the `bla-cloud` folder using the panel's
-   File Manager or an FTP app (FileZilla). Common places:
+3. **Upload the files.** Unzip Haven on your computer, then upload the folder using the panel's
+   File Manager or an FTP app (FileZilla) — rename it to `haven` if you like. Common places:
    - `public_html/cloud` → your cloud is at `https://yourdomain.com/cloud/`
    - or point a subdomain like `cloud.yourdomain.com` at the folder.
 4. **Visit the address** in your browser. The setup wizard opens.
 5. **Storage step.** If the wizard suggests a folder *outside* `public_html` (for example
-   `/home/youruser/bla-cloud-data`), keep it: that's the safest place. If your host doesn't allow it,
+   `/home/youruser/haven-data`), keep it: that's the safest place. If your host doesn't allow it,
    the built-in `data` folder is used and locked down automatically.
 6. Create your account, sign in, and scan the QR code with your authenticator app.
 
 > **Do setup right after uploading.** Until setup is finished, anyone who finds the address could run the wizard.
 
-**Upload size:** BLA-Cloud sends big files in pieces, so hosting upload limits don't matter.
+**Upload size:** Haven sends big files in pieces, so hosting upload limits don't matter.
 The included `.htaccess` / `.user.ini` raise the limit where the host allows, which just makes uploads faster.
 
 **After setup (optional, recommended):** make `config/config.php` read-only (permissions `440`) in the File Manager.
@@ -37,12 +37,12 @@ Install PHP (Ubuntu 24.04 example):
 
 ```bash
 sudo apt install php8.3-fpm php8.3-sqlite3 php8.3-mbstring php8.3-gd php8.3-zip php8.3-mysql
-sudo mkdir -p /var/www/bla-cloud /var/lib/bla-cloud-data
-# copy the BLA-Cloud files into /var/www/bla-cloud, then:
-sudo chown -R www-data:www-data /var/www/bla-cloud/config /var/lib/bla-cloud-data
+sudo mkdir -p /var/www/haven /var/lib/haven-data
+# copy the Haven files into /var/www/haven, then:
+sudo chown -R www-data:www-data /var/www/haven/config /var/lib/haven-data
 ```
 
-In the wizard, set the data folder to `/var/lib/bla-cloud-data`.
+In the wizard, set the data folder to `/var/lib/haven-data`.
 
 ### Nginx
 
@@ -50,7 +50,7 @@ In the wizard, set the data folder to `/var/lib/bla-cloud-data`.
 server {
     listen 443 ssl http2;
     server_name cloud.example.com;
-    root /var/www/bla-cloud;
+    root /var/www/haven;
     index index.php;
 
     ssl_certificate     /etc/letsencrypt/live/cloud.example.com/fullchain.pem;
@@ -83,7 +83,7 @@ server { listen 80; server_name cloud.example.com; return 301 https://$host$requ
 
 ```caddy
 cloud.example.com {
-    root * /var/www/bla-cloud
+    root * /var/www/haven
     @blocked path /app/* /config/* /data/* /tests/* /docs/* /tools/* /.* *.sqlite *.md
     respond @blocked 404
     request_body { max_size 64MB }
@@ -98,11 +98,11 @@ Set `upload_max_filesize = 64M` and `post_max_size = 70M` in `/etc/php/8.3/fpm/p
 
 ## C. Behind a reverse proxy
 
-When a proxy forwards traffic to BLA-Cloud, BLA-Cloud needs to know which proxy to trust, so it can
+When a proxy forwards traffic to Haven, Haven needs to know which proxy to trust, so it can
 see visitors' real IP addresses (used for rate limiting and the activity log) and know the connection is HTTPS.
 
 1. In the setup wizard's **Storage** step, open **Advanced: reverse proxy**, tick the box and enter the proxy's
-   IP address as BLA-Cloud sees it (the wizard pre-fills it when it detects one). Examples:
+   IP address as Haven sees it (the wizard pre-fills it when it detects one). Examples:
    `127.0.0.1` (same machine), `172.18.0.0/16` (Docker network), `10.0.0.5` (another server).
 2. Your proxy must send `X-Forwarded-For` and `X-Forwarded-Proto` headers (all common proxies do).
 3. To change it later, edit `trusted_proxies` in `config/config.php`:
@@ -162,7 +162,7 @@ Turn them on under **Backups** in the admin sidebar: pick a folder (ideally outs
 website folder and the data folder — a sibling folder, or a mounted network drive), how often
 (daily/weekly) and how many to keep, and set a **passphrase**. That passphrase is separate from
 your account password and from the app's own encryption key: write it down somewhere safe, because
-it's the only way to restore a backup, and BLA-Cloud never stores it in a readable form.
+it's the only way to restore a backup, and Haven never stores it in a readable form.
 
 **Reliable scheduling with real cron.** By default, a scheduled backup runs as a side effect of
 someone visiting the site (like the rest of the housekeeping) — fine for an active site, less
@@ -171,7 +171,7 @@ reliable for one nobody visits for a day or two. If your host allows cron jobs, 
 ```bash
 crontab -e
 # runs every 15 minutes; each job checks whether a backup is actually due and exits quickly if not
-0,15,30,45 * * * * php /path/to/bla-cloud/tools/cron.php
+0,15,30,45 * * * * php /path/to/haven/tools/cron.php
 ```
 
 **Verify** decrypts a backup and checks it's intact (including opening a SQLite snapshot and
@@ -186,13 +186,13 @@ type (SQLite or MySQL) as this one.
 **Moving to a brand-new server** (this one is gone entirely) is a manual process, since there's no
 running app yet to click "Restore" in:
 
-1. Install BLA-Cloud fresh on the new server (through the setup wizard) — or skip the wizard,
+1. Install Haven fresh on the new server (through the setup wizard) — or skip the wizard,
    see step 3.
 2. Get a copy of the backup file onto the new server.
 3. From a terminal on the new server, decrypt and extract it:
    ```bash
    php -r '
-   require "/path/to/bla-cloud/app/bootstrap.php";
+   require "/path/to/haven/app/bootstrap.php";
    BlaCloud\Backup::decryptFile("/path/to/the/backup/file.bcbackup", "/tmp/restored.zip", "your passphrase");
    (new ZipArchive())->open("/tmp/restored.zip") && (new ZipArchive())->extractTo("/tmp/restored");
    '
@@ -231,9 +231,9 @@ touch its data, and (for Calendar/Contacts specifically) doesn't stop it syncing
 since that sync is handled by the core, not the app.
 
 To install a new app, place its folder inside `app/apps/` on your server (the same way you'd upload
-BLA-Cloud itself — FTP, File Manager, or unzip-and-upload), then enable it on that page. There's no
+Haven itself — FTP, File Manager, or unzip-and-upload), then enable it on that page. There's no
 in-browser "upload an app" button by design: an app is arbitrary PHP that runs in-process alongside
-the rest of BLA-Cloud, so only install ones you trust — see `app/apps/README.md` if you're writing
+the rest of Haven, so only install ones you trust — see `app/apps/README.md` if you're writing
 your own.
 
 ## Project chat
@@ -253,7 +253,7 @@ accountable for the project.
 
 **Settings → Sync → AI access** connects an MCP-compatible AI assistant (Claude and others) directly
 to your account. Create a token there — it's shown once, like a backup or encryption passphrase —
-and add BLA-Cloud as a remote MCP server in your AI assistant using the address shown on that page
+and add Haven as a remote MCP server in your AI assistant using the address shown on that page
 (`https://your-domain.com/cloud/mcp`) with the token as the Bearer credential.
 
 A token gives that AI **full read/write access to your own data**: files (reading and writing plain
@@ -264,7 +264,7 @@ reach admin functions — no user management, no settings, no backups, no turnin
 This is what makes "AI, read the #General channel on Project A and turn it into tasks" or "draft a
 scope-of-work document from that discussion" work: the AI reads the channel with `chat_get_messages`,
 then creates the tasks/stages and writes the document itself using the same tools listed above —
-there's no separate "summarize" button or automatic behavior built into BLA-Cloud, and no AI API key
+there's no separate "summarize" button or automatic behavior built into Haven, and no AI API key
 for you to configure or pay for on this end.
 
 There's no sandboxing beyond that scoping: whatever the AI decides to do with its access, it can do,

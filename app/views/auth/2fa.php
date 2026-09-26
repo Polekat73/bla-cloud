@@ -1,4 +1,4 @@
-<p class="auth__lead">Open your authenticator app and enter the 6-digit code for <?= e(\BlaCloud\Config::get('instance_name', 'BLA-Cloud')) ?>.</p>
+<p class="auth__lead">Open your authenticator app and enter the 6-digit code for <?= e(\BlaCloud\Config::get('instance_name', 'Haven')) ?>.</p>
 <form method="post" action="<?= e(url('2fa')) ?>" class="form">
   <?= csrf_field() ?>
   <label class="field"><span>Verification code</span>

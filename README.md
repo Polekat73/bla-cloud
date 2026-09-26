@@ -1,4 +1,4 @@
-# BLA-Cloud
+# Haven
 
 **Your own private cloud, by [Best Life Apps](https://bestlifeapps.com).**
 A safe place for your files that runs on your own server, written from scratch in plain PHP. There's no Docker to set up and it works on ordinary web hosting.
@@ -91,7 +91,7 @@ The full guide covers shared hosting, a VPS (Nginx/Caddy) and reverse proxies: *
 ## Try it on your own computer
 
 ```bash
-cd bla-cloud
+cd haven   # or whatever you named the folder you cloned/unzipped
 php -S localhost:8080 router.php
 # open http://localhost:8080
 ```
@@ -117,7 +117,7 @@ There's no in-app updater yet (Stage 7, planned — see docs/ROADMAP.md), so upg
 3. Update the code:
    - **Shared hosting**: upload the new files over the old ones. Don't delete `config/config.php`.
    - **VPS deployed via `git clone`**: `git pull` (or `git fetch && git checkout <tag>`) in place.
-4. Open BLA-Cloud in your browser. Any database changes happen automatically. Check
+4. Open Haven in your browser. Any database changes happen automatically. Check
    **System status → Security activity** for the "upgrade" entries.
 
 ## Project layout
@@ -138,7 +138,7 @@ tests/               Automated tests
 
 ## Security
 
-See [docs/SECURITY.md](docs/SECURITY.md) for how BLA-Cloud protects your data, and what to do after installing.
+See [docs/SECURITY.md](docs/SECURITY.md) for how Haven protects your data, and what to do after installing.
 
 ---
 

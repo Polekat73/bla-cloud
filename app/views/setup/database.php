@@ -4,7 +4,7 @@ $driver = $setup['db']['driver'] ?? (!extension_loaded('pdo_sqlite') ? 'mysql' :
 $hasSqlite = extension_loaded('pdo_sqlite');
 $hasMysql = extension_loaded('pdo_mysql');
 ?>
-<h2>Where should BLA-Cloud keep its records?</h2>
+<h2>Where should Haven keep its records?</h2>
 <p class="lead">This database stores accounts and settings (your files are stored separately as normal files).</p>
 
 <form method="post" class="form" data-db-form>

@@ -1,13 +1,13 @@
-# Writing a BLA-Cloud app
+# Writing a Haven app
 
 An app is a folder in `app/apps/` with its own controller(s), views and a `manifest.php`. It
-runs in-process (plain PHP, autoloaded like the rest of BLA-Cloud) — there's no sandboxing, so
+runs in-process (plain PHP, autoloaded like the rest of Haven) — there's no sandboxing, so
 only install apps you trust, the same way you'd only install a WordPress plugin you trust.
 
 ## Installing one
 
 Copy the app's folder into `app/apps/` (FTP, File Manager, unzip-and-upload — however you'd
-upload BLA-Cloud itself), then go to **Administration → Apps** and enable it. There's no
+upload Haven itself), then go to **Administration → Apps** and enable it. There's no
 in-browser upload/install step by design: extracting and running arbitrary PHP from an admin
 upload is a much bigger attack surface than a human deciding what goes on their own server.
 

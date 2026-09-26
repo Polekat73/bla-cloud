@@ -81,7 +81,7 @@ final class ShareController
         if ($new && Settings::get('share_notify') && $to['email'] !== '' && Mailer::enabled()) {
             $from = $u['display_name'] ?: $u['username'];
             $what = basename(Storage::normalize($rel));
-            $cloud = (string) Config::get('instance_name', 'BLA-Cloud');
+            $cloud = (string) Config::get('instance_name', 'Haven');
             $mailed = Mailer::send($to['email'], "$from shared “{$what}” with you", "$from shared something with you", [
                 "Hi " . ($to['display_name'] ?: $to['username']) . ',',
                 "$from shared “{$what}” with you on $cloud (" . (Shares::LABELS[Request::post('perms')] ?? '') . ').',

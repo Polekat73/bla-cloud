@@ -53,7 +53,7 @@ final class FileCrypto
         }
         if (fread($in, strlen($magic)) !== $magic) {
             fclose($in);
-            throw new StorageException('That is not a file BLA-Cloud encrypted.');
+            throw new StorageException('That is not a file Haven encrypted.');
         }
         $salt = fread($in, SODIUM_CRYPTO_PWHASH_SALTBYTES);
         fread($in, 8); // plaintext size — see plaintextSize()

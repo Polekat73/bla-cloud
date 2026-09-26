@@ -96,7 +96,7 @@ final class Vcard
      */
     public static function buildContact(array $f): string
     {
-        $uid = ($f['uid'] ?? '') ?: bin2hex(random_bytes(16)) . '@bla-cloud';
+        $uid = ($f['uid'] ?? '') ?: bin2hex(random_bytes(16)) . '@haven';
         $given = trim((string) ($f['given'] ?? ''));
         $family = trim((string) ($f['family'] ?? ''));
         $fn = trim("$given $family") ?: ($f['fn'] ?? 'New contact');

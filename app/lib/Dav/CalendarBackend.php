@@ -114,7 +114,7 @@ final class CalendarBackend
                 => new Raw('<cal:comp name="VEVENT"/><cal:comp name="VTODO"/>'),
             '{urn:ietf:params:xml:ns:caldav}calendar-description' => '',
             '{http://calendarserver.org/ns/}getctag' => (string) $cal['ctag'],
-            '{DAV:}sync-token' => 'https://bla-cloud/ns/sync/' . $cal['ctag'],
+            '{DAV:}sync-token' => 'https://haven/ns/sync/' . $cal['ctag'],
         ];
         $this->emit($ms, $href, $all, $requested);
     }

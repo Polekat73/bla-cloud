@@ -26,7 +26,7 @@ final class Settings
         // Email
         'mail_mode'            => 'off',  // off | php | smtp
         'mail_from'            => '',
-        'mail_from_name'       => 'BLA-Cloud',
+        'mail_from_name'       => 'Haven',
         'smtp_host'            => '',
         'smtp_port'            => 587,
         'smtp_security'        => 'starttls', // starttls | ssl | none

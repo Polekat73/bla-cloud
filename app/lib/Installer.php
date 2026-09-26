@@ -95,7 +95,7 @@ final class Installer
     /** Suggest a data folder outside the public web folder when possible. */
     public static function suggestedDataDir(): string
     {
-        $outside = dirname(BLA_ROOT) . '/bla-cloud-data';
+        $outside = dirname(BLA_ROOT) . '/haven-data';
         if (is_dir($outside) ? is_writable($outside) : @is_writable(dirname(BLA_ROOT))) {
             if (self::openBasedirAllows($outside)) {
                 return $outside;
@@ -143,10 +143,10 @@ final class Installer
         }
         $real = (string) realpath($dir);
         if ($real === realpath(BLA_ROOT) || str_starts_with(realpath(BLA_ROOT) . '/', $real . '/')) {
-            throw new \InvalidArgumentException('The data folder cannot be the BLA-Cloud program folder itself or one of its parents.');
+            throw new \InvalidArgumentException('The data folder cannot be the Haven program folder itself or one of its parents.');
         }
         // Defence in depth if the folder is reachable from the web.
-        @file_put_contents($real . '/.htaccess', "# BLA-Cloud: never serve anything from here\nRequire all denied\nDeny from all\nOptions -Indexes -ExecCGI\n<IfModule mod_php.c>\n  php_flag engine off\n</IfModule>\n");
+        @file_put_contents($real . '/.htaccess', "# Haven: never serve anything from here\nRequire all denied\nDeny from all\nOptions -Indexes -ExecCGI\n<IfModule mod_php.c>\n  php_flag engine off\n</IfModule>\n");
         @file_put_contents($real . '/index.html', '');
         @file_put_contents($real . '/web.config', '<?xml version="1.0"?><configuration><system.webServer><authorization><deny users="*" /></authorization></system.webServer></configuration>');
         @mkdir($real . '/users', 0750);
@@ -159,17 +159,17 @@ final class Installer
     public static function install(array $s): int
     {
         if (Config::isInstalled()) {
-            throw new \RuntimeException('BLA-Cloud is already installed.');
+            throw new \RuntimeException('Haven is already installed.');
         }
         $dataDir = self::prepareDataDir($s['data_dir']);
 
         $db = $s['db'];
         if ($db['driver'] === 'sqlite') {
-            $db = ['driver' => 'sqlite', 'path' => $dataDir . '/bla-cloud.sqlite'];
+            $db = ['driver' => 'sqlite', 'path' => $dataDir . '/haven.sqlite'];
         }
         $pdo = Database::connectWith($db);
         if (Schema::exists($pdo)) {
-            throw new \RuntimeException('This database already contains a BLA-Cloud installation. Use a new, empty database (or restore your old config file).');
+            throw new \RuntimeException('This database already contains a Haven installation. Use a new, empty database (or restore your old config file).');
         }
         try {
             Schema::create($pdo, $db['driver']);
@@ -194,7 +194,7 @@ final class Installer
             'version'          => BLA_VERSION,
             'schema_version'   => Schema::VERSION,
             'instance_id'      => 'bla' . bin2hex(random_bytes(5)),
-            'instance_name'    => $s['instance_name'] ?: 'BLA-Cloud',
+            'instance_name'    => $s['instance_name'] ?: 'Haven',
             'app_key'          => base64_encode(random_bytes(SODIUM_CRYPTO_SECRETBOX_KEYBYTES)),
             'db'               => $db,
             'data_dir'         => $dataDir,
@@ -214,7 +214,7 @@ final class Installer
 
         $config['installed'] = true;
         Config::write($config);
-        Audit::log($adminId, 'install.completed', 'BLA-Cloud ' . BLA_VERSION);
+        Audit::log($adminId, 'install.completed', 'Haven ' . BLA_VERSION);
         return $adminId;
     }
 }

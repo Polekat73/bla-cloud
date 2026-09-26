@@ -24,6 +24,6 @@
 
   <div class="actions">
     <a class="btn btn--ghost" href="?step=storage">Back</a>
-    <button class="btn btn--primary" type="submit" data-busy="Installing…">Install BLA-Cloud <?= icon('check') ?></button>
+    <button class="btn btn--primary" type="submit" data-busy="Installing…">Install Haven <?= icon('check') ?></button>
   </div>
 </form>

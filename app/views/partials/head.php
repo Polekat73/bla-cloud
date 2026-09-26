@@ -1,4 +1,4 @@
-<?php $instance = \BlaCloud\Config::get('instance_name', 'BLA-Cloud'); ?>
+<?php $instance = \BlaCloud\Config::get('instance_name', 'Haven'); ?>
 <!DOCTYPE html>
 <html lang="en">
 <head>

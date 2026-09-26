@@ -1,6 +1,6 @@
 <div class="done">
   <div class="done__icon"><?= icon('check') ?></div>
-  <h2>BLA-Cloud is installed</h2>
+  <h2>Haven is installed</h2>
   <p class="lead">Next, sign in with the account you just created. You'll then connect an authenticator app
     (like Google Authenticator, Microsoft Authenticator or Authy) — it only takes a minute.</p>
   <ul class="tips">

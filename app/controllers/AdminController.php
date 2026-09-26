@@ -70,7 +70,7 @@ final class AdminController
             'checks'   => $checks,
             'activity' => Audit::recent(40),
             'info'     => [
-                'BLA-Cloud version' => BLA_VERSION,
+                'Haven version' => BLA_VERSION,
                 'PHP'               => PHP_VERSION . ' (' . PHP_SAPI . ')',
                 'Server'            => (string) ($_SERVER['SERVER_SOFTWARE'] ?? 'unknown'),
                 'Behind proxy'      => Config::get('trusted_proxies') ? 'Yes (' . implode(', ', (array) Config::get('trusted_proxies')) . ')' : 'No',
