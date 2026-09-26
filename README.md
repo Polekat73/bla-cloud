@@ -74,7 +74,7 @@ A safe place for your files that runs on your own server, written from scratch i
 | | Minimum |
 |---|---|
 | PHP | 8.2 or newer (8.3+ recommended) |
-| PHP extensions | `pdo_sqlite` **or** `pdo_mysql`, `sodium`, `mbstring` (usually already on) |
+| PHP extensions | `pdo_sqlite` **or** `pdo_mysql`, `sodium`, `mbstring` (required); `gd` or `imagick`, `zip` (recommended — thumbnails, zip downloads, backups) |
 | Database | Nothing extra with SQLite (default), or MySQL 5.7+/MariaDB 10.4+ |
 | Web server | Apache (most shared hosting), Nginx, Caddy, LiteSpeed |
 | HTTPS | Required when online (free Let's Encrypt in most hosting panels) |

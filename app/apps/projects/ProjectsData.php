@@ -50,20 +50,24 @@ final class ProjectsData
         return $project;
     }
 
+    /** Message deliberately matches requireMember()'s wording — a caller shouldn't be able to tell
+     *  "this column doesn't exist" apart from "it exists, but you can't see it" (see the note on
+     *  requireMember() above; the same enumeration risk applies to task/column ids). */
     private static function projectIdOfColumn(int $columnId): int
     {
         $row = Database::one('SELECT project_id FROM bla_project_columns WHERE id = ?', [$columnId]);
         if (!$row) {
-            throw new StorageException('That column no longer exists.', 404);
+            throw new StorageException('That column does not exist, or you are not a member of its project.', 404);
         }
         return (int) $row['project_id'];
     }
 
+    /** Message deliberately matches requireMember()'s wording — see the note on projectIdOfColumn(). */
     public static function projectIdOfTask(int $taskId): int
     {
         $row = Database::one('SELECT project_id FROM bla_project_tasks WHERE id = ?', [$taskId]);
         if (!$row) {
-            throw new StorageException('That task no longer exists.', 404);
+            throw new StorageException('That task does not exist, or you are not a member of its project.', 404);
         }
         return (int) $row['project_id'];
     }

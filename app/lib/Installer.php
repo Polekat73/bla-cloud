@@ -24,8 +24,8 @@ final class Installer
             'sodium'   => ['fail', 'Encryption (libsodium)'],
             'mbstring' => ['fail', 'Text handling (mbstring)'],
             'fileinfo' => ['warn', 'File type detection (fileinfo)'],
-            'gd'       => ['warn', 'Image thumbnails (GD) — used in a later update'],
-            'zip'      => ['warn', 'Zip archives — used for backups in a later update'],
+            'gd'       => ['warn', 'Image thumbnails (GD)'],
+            'zip'      => ['warn', 'Zip downloads and encrypted backups'],
         ] as $ext => [$ifMissing, $label]) {
             $ok = extension_loaded($ext) || ($ext === 'gd' && extension_loaded('imagick'));
             $add($label, $ok ? 'ok' : $ifMissing, $ok ? 'Available' : "The PHP \"$ext\" extension is missing");
