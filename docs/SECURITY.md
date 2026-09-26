@@ -26,20 +26,39 @@
 | **Email** | SMTP over STARTTLS or SSL with certificate checks. The password is stored encrypted, and it won't be sent over an unencrypted connection (except to localhost). Email content is HTML-escaped. |
 | **Admin safety** | You can't remove the last administrator, demote or disable yourself, or delete your own account. Deleting a person requires typing their username. |
 | **Zip downloads** | Symlinks and server config files are skipped. Size and file-count limits prevent the server from filling up. |
+| **Backups** | Encrypted (libsodium) under a passphrase separate from your account password and the app's own key. A "verify" restore drill checks a backup without touching anything live. |
+| **Encryption at rest** | Optional: file *contents* encrypted on disk (libsodium `secretstream`) under their own passphrase, separate from your account password and the backup passphrase. Off by default — see below before deciding. |
+| **Apps** | Installed apps run in-process with no special privileges — a controller in an app still has to authenticate and authorize the request itself, the same as core code. Only install apps you trust; there's no sandboxing. |
 
 ## What you should do after installing
 
 1. **Use HTTPS.** BLA-Cloud warns you on the status page if you're not.
 2. **Save your recovery codes** somewhere safe that isn't your phone.
-3. **Back up `config/config.php`.** It holds the key that encrypts your 2FA secrets. Without it, 2FA has to be reset.
+3. **Back up `config/config.php`.** It holds the key that encrypts your 2FA secrets, backup passphrase and encryption-at-rest passphrase. Without it, all three have to be reset/reconfigured.
 4. Optionally make `config/config.php` read-only (`chmod 440`).
 5. Keep PHP updated through your hosting panel.
+6. **Turn on Backups before you put anything you'd miss on it.** Pick a destination outside both the
+   website folder and the data folder (docs/INSTALL.md has the details), and write the passphrase down
+   somewhere safe — it's the only way to restore, and BLA-Cloud never stores it in the clear.
+7. **Decide on Encryption at rest now, not later.** It only protects files saved *after* it's turned on
+   (there's a separate "Encrypt existing files now" migration for what's already there, which needs
+   backups configured first). Turning it on after months of real data means an extra bulk-migration
+   step; turning it on from day one doesn't. There's no passphrase recovery and no rotation — write it
+   down like the backup passphrase, and expect a real (if usually small) slowdown on large files
+   while it's on, since there's no seekable cipher.
 
 ## Not built yet (planned)
 
-- **Encryption of stored files** (encryption at rest with libsodium, optional per user, with the recovery trade-offs explained in plain words)
-- Backups with a tested restore, and in-app updates with automatic rollback
-- An independent security review before real-world use
+- **Safe in-app updates** with automatic rollback (Stage 7) — for now, upgrading is manual: see
+  "Upgrading" in README.md. There's no one-click update and no automatic rollback if a new version
+  has a problem, so read the changelog before upgrading and keep a backup handy.
+
+## Independent review
+
+An independent security review (an AI pass covering auth, sessions, CSRF, path safety, WebDAV/CalDAV
+auth boundaries, share-link tokens and secret-at-rest handling) found no critical or high-severity
+issues as of Stage 9 (v0.8.0). That's one reviewer, not a substitute for a second set of human eyes —
+get one before this holds data you'd genuinely miss.
 
 ## Emergency: admin locked out of 2FA and recovery codes are lost
 

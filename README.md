@@ -101,9 +101,16 @@ These cover the two-step verification codes (official RFC 6238 test vectors), fi
 
 ## Upgrading
 
-1. Back up `config/config.php` and your data folder.
-2. Upload the new files over the old ones. Don't delete `config/config.php`.
-3. Open BLA-Cloud in your browser. Any database changes happen automatically. Check **System status → Security activity** for the "upgrade" entries.
+There's no in-app updater yet (Stage 7, planned — see docs/ROADMAP.md), so upgrading is manual:
+
+1. **Take a backup first** (Backups page, or back up `config/config.php` and your data folder by
+   hand if you haven't set that up). There's no automatic rollback if the new version has a problem.
+2. Read the [CHANGELOG](CHANGELOG.md) for anything that needs your attention.
+3. Update the code:
+   - **Shared hosting**: upload the new files over the old ones. Don't delete `config/config.php`.
+   - **VPS deployed via `git clone`**: `git pull` (or `git fetch && git checkout <tag>`) in place.
+4. Open BLA-Cloud in your browser. Any database changes happen automatically. Check
+   **System status → Security activity** for the "upgrade" entries.
 
 ## Project layout
 
