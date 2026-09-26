@@ -3,6 +3,7 @@ declare(strict_types=1);
 
 namespace BlaCloud\Mcp;
 
+use BlaCloud\Apps\Projects\ChannelsData;
 use BlaCloud\Apps\Projects\ProjectsData;
 use BlaCloud\Audit;
 use BlaCloud\Database;
@@ -136,6 +137,29 @@ final class Tools
                 'type' => 'object', 'required' => ['project_id', 'username'],
                 'properties' => ['project_id' => ['type' => 'integer'], 'username' => $str('Their username.')],
             ]],
+            'projects_create_column' => ['Adds a Kanban column (project stage) to a project, e.g. to break work into phases.', [
+                'type' => 'object', 'required' => ['project_id', 'name'],
+                'properties' => ['project_id' => ['type' => 'integer'], 'name' => $str('Column name, e.g. "Design" or "Phase 2".')],
+            ]],
+            'chat_list_channels' => ['Lists a project\'s chat channels you belong to.', [
+                'type' => 'object', 'required' => ['project_id'], 'properties' => ['project_id' => ['type' => 'integer']],
+            ]],
+            'chat_get_messages' => ['Reads a channel\'s messages — use this to catch up on a discussion before summarizing it or turning it into tasks.', [
+                'type' => 'object', 'required' => ['channel_id'],
+                'properties' => ['channel_id' => ['type' => 'integer'], 'since_id' => ['type' => 'integer', 'description' => 'Only messages after this id (omit for the whole history, up to 500 messages).']],
+            ]],
+            'chat_post_message' => ['Posts a message to a channel — e.g. to share a summary or ask a clarifying question.', [
+                'type' => 'object', 'required' => ['channel_id', 'body'], 'properties' => ['channel_id' => ['type' => 'integer'], 'body' => $str('Message text.')],
+            ]],
+            'chat_create_channel' => ['Creates a new topic channel in a project.', [
+                'type' => 'object', 'required' => ['project_id', 'name'], 'properties' => ['project_id' => ['type' => 'integer'], 'name' => $str('Channel name.')],
+            ]],
+            'chat_add_member' => ['Invites a project member into a channel you belong to.', [
+                'type' => 'object', 'required' => ['channel_id', 'username'], 'properties' => ['channel_id' => ['type' => 'integer'], 'username' => $str('Their username.')],
+            ]],
+            'chat_remove_member' => ['Removes someone from a channel you created (or a project you own).', [
+                'type' => 'object', 'required' => ['channel_id', 'username'], 'properties' => ['channel_id' => ['type' => 'integer'], 'username' => $str('Their username.')],
+            ]],
         ];
     }
 
@@ -172,6 +196,13 @@ final class Tools
             'projects_delete_task'  => self::void(fn () => ProjectsData::deleteTask($uid, (int) ($args['task_id'] ?? 0))),
             'projects_add_comment'  => ['id' => ProjectsData::addComment($uid, (int) ($args['task_id'] ?? 0), (string) ($args['body'] ?? ''))],
             'projects_add_member'   => self::void(fn () => ProjectsData::addMember($uid, (int) ($args['project_id'] ?? 0), (string) ($args['username'] ?? ''))),
+            'projects_create_column' => ['column_id' => ProjectsData::createColumn($uid, (int) ($args['project_id'] ?? 0), (string) ($args['name'] ?? ''))],
+            'chat_list_channels' => self::chatListChannels($uid, (int) ($args['project_id'] ?? 0)),
+            'chat_get_messages'  => self::chatGetMessages($uid, (int) ($args['channel_id'] ?? 0), (int) ($args['since_id'] ?? 0)),
+            'chat_post_message'  => ['id' => ChannelsData::postMessage($uid, (int) ($args['channel_id'] ?? 0), (string) ($args['body'] ?? ''))],
+            'chat_create_channel' => ['channel_id' => ChannelsData::createChannel($uid, (int) ($args['project_id'] ?? 0), (string) ($args['name'] ?? ''))],
+            'chat_add_member'    => self::void(fn () => ChannelsData::addMember($uid, (int) ($args['channel_id'] ?? 0), (string) ($args['username'] ?? ''))),
+            'chat_remove_member' => self::chatRemoveMember($uid, (int) ($args['channel_id'] ?? 0), (string) ($args['username'] ?? '')),
             default => throw new StorageException("Unknown tool: $name", 404),
         };
     }
@@ -477,5 +508,36 @@ final class Tools
         $assignee = self::resolveAssignee($uid, $projectId, $args['assignee_username'] ?? null);
         ProjectsData::updateTask($uid, $taskId, (string) ($args['title'] ?? ''), (string) ($args['description'] ?? ''), $assignee, ($args['due_at'] ?? null) ?: null);
         return ['ok' => true];
+    }
+
+    // ---------- Chat ----------
+
+    private static function chatListChannels(int $uid, int $projectId): array
+    {
+        ProjectsData::requireMember($uid, $projectId);
+        return ['channels' => array_values(array_filter(
+            ChannelsData::forProject($projectId),
+            static fn ($c) => ChannelsData::isMember($uid, (int) $c['id'])
+        ))];
+    }
+
+    private static function chatGetMessages(int $uid, int $channelId, int $sinceId): array
+    {
+        return ['messages' => array_map(static fn ($m) => [
+            'id' => (int) $m['id'], 'from' => $m['display_name'] ?: $m['username'], 'body' => $m['body'], 'at' => $m['created_at'],
+        ], ChannelsData::messagesSince($uid, $channelId, $sinceId))];
+    }
+
+    /** Same membership-first ordering as resolveAssignee() — see the note there. */
+    private static function chatRemoveMember(int $uid, int $channelId, string $username): array
+    {
+        $channel = ChannelsData::requireChannelMember($uid, $channelId);
+        foreach (ChannelsData::members($channelId) as $m) {
+            if (strcasecmp($m['username'], $username) === 0) {
+                ChannelsData::removeMember($uid, $channelId, (int) $m['id']);
+                return ['ok' => true];
+            }
+        }
+        throw new StorageException("\"$username\" is not in that channel.");
     }
 }

@@ -27,6 +27,8 @@ $labels = [
     'project.task_created' => 'Task created', 'project.task_deleted' => 'Task deleted',
     'aitoken.created' => 'New AI access token', 'aitoken.revoked' => 'AI access token revoked',
     'mcp.tool_call' => 'AI action',
+    'channel.created' => 'Chat channel created', 'channel.deleted' => 'Chat channel deleted',
+    'channel.member_added' => 'Added someone to a chat channel', 'channel.member_removed' => 'Removed someone from a chat channel',
 ];
 $bad = ['login.failed', 'login.throttled', '2fa.failed', '2fa.disabled', 'user.delete', 'user.reset_2fa', 'apppassword.revoked',
     'backup.failed', 'backup.disabled', 'encryption.paused', 'apps.disabled', 'aitoken.revoked'];

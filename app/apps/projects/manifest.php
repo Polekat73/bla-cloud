@@ -1,6 +1,7 @@
 <?php
 declare(strict_types=1);
 
+use BlaCloud\Apps\Projects\ChatController;
 use BlaCloud\Apps\Projects\ProjectsController;
 
 return [
@@ -25,5 +26,13 @@ return [
         'projects.task.delete'    => [ProjectsController::class, 'deleteTask'],
         'projects.task.move'      => [ProjectsController::class, 'moveTask'],
         'projects.comment.create' => [ProjectsController::class, 'addComment'],
+        'projects.chat'                 => [ChatController::class, 'show'],
+        'projects.chat.messages'        => [ChatController::class, 'messages'],
+        'projects.chat.post'            => [ChatController::class, 'post'],
+        'projects.chat.message.delete'  => [ChatController::class, 'deleteMessage'],
+        'projects.chat.channel.create'  => [ChatController::class, 'createChannel'],
+        'projects.chat.channel.delete'  => [ChatController::class, 'deleteChannel'],
+        'projects.chat.member.add'      => [ChatController::class, 'addMember'],
+        'projects.chat.member.remove'   => [ChatController::class, 'removeMember'],
     ],
 ];

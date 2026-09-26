@@ -97,6 +97,7 @@ final class ProjectsData
             Database::run('INSERT INTO bla_project_columns (project_id, name, position, created_at) VALUES (?, ?, ?, ?)',
                 [$id, $colName, $i, $now]);
         }
+        ChannelsData::createChannel($ownerId, $id, 'General');
         Audit::log($ownerId, 'project.created', $name);
         return $id;
     }

@@ -236,6 +236,19 @@ in-browser "upload an app" button by design: an app is arbitrary PHP that runs i
 the rest of BLA-Cloud, so only install ones you trust — see `app/apps/README.md` if you're writing
 your own.
 
+## Project chat
+
+Every project has a chat, under the project's **Chat** tab: a default "General" channel plus as many
+topic channels as you want. Messages update every few seconds by checking the server (not a
+persistent connection), so it works on any shared host, including the one this app is designed to
+deploy to.
+
+Joining a project does **not** automatically add you to its channels — an existing channel member
+invites you into a specific one under that channel's **Members** dialog. The channel's creator or the
+project owner can remove someone, delete the channel, or delete any message; a project owner can do
+all of that even for a channel they haven't personally joined, since moderation belongs to whoever's
+accountable for the project.
+
 ## AI access (MCP)
 
 **Settings → Sync → AI access** connects an MCP-compatible AI assistant (Claude and others) directly
@@ -244,9 +257,15 @@ and add BLA-Cloud as a remote MCP server in your AI assistant using the address 
 (`https://your-domain.com/cloud/mcp`) with the token as the Bearer credential.
 
 A token gives that AI **full read/write access to your own data**: files (reading and writing plain
-text files up to 256 KB; creating, moving and deleting anything), calendar events, contacts, and
-projects. It can never see another person's data on your cloud, and it can never reach admin
-functions — no user management, no settings, no backups, no turning apps on or off.
+text files up to 256 KB; creating, moving and deleting anything), calendar events, contacts,
+projects, and project chat. It can never see another person's data on your cloud, and it can never
+reach admin functions — no user management, no settings, no backups, no turning apps on or off.
+
+This is what makes "AI, read the #General channel on Project A and turn it into tasks" or "draft a
+scope-of-work document from that discussion" work: the AI reads the channel with `chat_get_messages`,
+then creates the tasks/stages and writes the document itself using the same tools listed above —
+there's no separate "summarize" button or automatic behavior built into BLA-Cloud, and no AI API key
+for you to configure or pay for on this end.
 
 There's no sandboxing beyond that scoping: whatever the AI decides to do with its access, it can do,
 the same as if you'd done it yourself. Treat a token like a password — only issue one to an assistant

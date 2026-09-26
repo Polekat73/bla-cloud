@@ -1,5 +1,24 @@
 # Changelog
 
+## 0.11.0 — Stage 12: Project chat
+- **Chat channels within Projects**: topic-based discussion per project (a default "General" channel,
+  plus as many topic channels as you want), with polling-based updates (every 3s) so it works on any
+  shared host without needing a persistent WebSocket connection.
+- **Invite/remove people from a channel**, separate from project membership — joining a project
+  doesn't put you in every channel; an existing channel member invites another project member in.
+  The channel creator or the project owner can remove someone, delete the channel, or delete any
+  message (moderation), without needing to have personally joined that channel.
+- **7 new MCP tools** (`chat_list_channels`, `chat_get_messages`, `chat_post_message`,
+  `chat_create_channel`, `chat_add_member`, `chat_remove_member`, `projects_create_column`) so a
+  connected AI can read a project's chat and turn the discussion into stages (columns), tasks, and
+  Markdown documents written straight into the project's files — using the tools already built in
+  Stage 11, with no new AI API key or ongoing API cost.
+- A code-review pass on this stage found and fixed two real bugs before release: the project owner
+  couldn't moderate (delete/remove from) a channel they hadn't personally joined, and the chat page
+  didn't verify a requested channel actually belonged to the requested project (so a crafted URL
+  could show one project's members/breadcrumb alongside a different project's messages). Both fixed,
+  both covered by regression tests.
+
 ## 0.10.0 — Stage 11: AI integration (MCP)
 - **MCP server** at `/mcp`: a Model Context Protocol server (JSON-RPC 2.0, single-JSON-response
   "Streamable HTTP" transport) so an MCP-compatible AI assistant can connect directly to your cloud.

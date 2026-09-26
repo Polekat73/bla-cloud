@@ -15,6 +15,7 @@ Built in stages, and each stage is tested before the next begins.
 | **9. Apps system** | Documented plugin structure, install/enable/disable from the admin panel | ✅ **Done (v0.8.0)** — in-process PHP apps, manual install (drop a folder in), no upload UI yet; see below |
 | **10. Projects app** | Kanban-style project boards built on the Stage 9 apps system: tasks, columns, assignees, due dates, comments | ✅ **Done (v0.9.0)** — web UI only, no CalDAV/task-sync yet; see below |
 | **11. AI integration (MCP)** | A Model Context Protocol server so an AI assistant can read and manage your own data | ✅ **Done (v0.10.0)** — full read/write, scoped to one person's own data, revocable tokens; see below |
+| **12. Project chat** | Topic channels within a project, with invite/remove membership, so a connected AI can read a discussion and turn it into stages/tasks/documents | ✅ **Done (v0.11.0)** — polling-based (no WebSockets), text only; see below |
 | **Later** | Video calls (WebRTC with PHP signaling + optional TURN server), document editor, desktop & phone apps | Architecture reserved |
 
 Before real-world use (after Stage 3–4): an independent security review.
@@ -87,3 +88,19 @@ separate copy of them. `files_read`/`files_write` are text-only and capped at 25
 and photos aren't readable or writable over MCP yet. There's no sandboxing of what a connected AI can
 do with that access, so treat an AI access token with the same care as a password: only give it to an
 assistant you trust, and revoke it if you stop using that integration.
+
+**Stage 12 notes:** channel membership is deliberately separate from project membership — joining a
+project doesn't put you in every channel, so a project can have a private topic without every member
+seeing it. An existing channel member invites another project member in; only the channel's creator or
+the project owner can remove someone (or delete the channel, or delete someone else's message —
+moderation stays with the person accountable for the project, and doesn't require them to have
+personally joined every channel they moderate). Messages update by polling every 3 seconds over
+ordinary HTTP, not WebSockets, since typical shared hosting (including the ArzHost deployment this app
+targets) can't run a persistent connection — see docs/INSTALL.md. No message editing, attachments, or
+read receipts yet, and there's no automatic AI behavior built into the app itself: summarizing a
+channel, turning it into tasks/stages, or drafting a scope-of-work document all happen through the
+Stage 11 MCP integration — a connected AI calls `chat_get_messages` to read the discussion, then
+`projects_create_column`/`projects_create_task` to turn it into work and `files_write` to produce a
+Markdown document alongside the project's other files. That's a deliberate choice, not a limitation:
+it means no new AI API key, no ongoing API cost, and no chat content leaving the server without a
+person asking for it each time — see Stage 11 notes above for why.
