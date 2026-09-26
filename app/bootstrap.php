@@ -1,12 +1,13 @@
 <?php
 declare(strict_types=1);
 
-const BLA_VERSION = '0.3.0';
+const BLA_VERSION = '0.8.0';
 const BLA_NAME    = 'BLA-Cloud';
 define('BLA_ROOT', dirname(__DIR__));
 define('BLA_APP', __DIR__);
 
-// Autoloader: BlaCloud\Foo -> app/lib/Foo.php, BlaCloud\Controllers\Bar -> app/controllers/Bar.php
+// Autoloader: BlaCloud\Foo -> app/lib/Foo.php, BlaCloud\Controllers\Bar -> app/controllers/Bar.php,
+// BlaCloud\Apps\Calendar\Foo -> app/apps/calendar/Foo.php (each installed app is its own namespace segment).
 spl_autoload_register(static function (string $class): void {
     $prefix = 'BlaCloud\\';
     if (!str_starts_with($class, $prefix)) {
@@ -15,6 +16,12 @@ spl_autoload_register(static function (string $class): void {
     $rel = substr($class, strlen($prefix));
     if (str_starts_with($rel, 'Controllers\\')) {
         $file = BLA_APP . '/controllers/' . substr($rel, 12) . '.php';
+    } elseif (str_starts_with($rel, 'Apps\\')) {
+        $parts = explode('\\', substr($rel, 5), 2);
+        if (count($parts) !== 2) {
+            return;
+        }
+        $file = BLA_ROOT . '/app/apps/' . strtolower($parts[0]) . '/' . $parts[1] . '.php';
     } else {
         $file = BLA_APP . '/lib/' . str_replace('\\', '/', $rel) . '.php';
     }

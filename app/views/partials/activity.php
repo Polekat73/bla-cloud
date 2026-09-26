@@ -15,8 +15,16 @@ $labels = [
     'invite.accepted' => 'Accepted invitation', 'password.reset' => 'Reset password by email link', 'password.reset_requested' => 'Requested a password reset',
     'settings.update' => 'Changed settings', 'share.user' => 'Shared with a person', 'share.link' => 'Created a public link',
     'share.delete' => 'Stopped sharing', 'share.email' => 'Emailed a link', 'share.leave' => 'Left a share', 'share.link_unlocked' => 'Link password entered', 'upgrade.code' => 'BLA-Cloud updated', 'maintenance' => 'Automatic cleanup',
+    'apppassword.created' => 'New app password', 'apppassword.revoked' => 'App password revoked',
+    'backup.created' => 'Backup created', 'backup.failed' => 'Backup failed', 'backup.verified' => 'Backup verified',
+    'backup.restored' => 'Restored from backup', 'backup.enabled' => 'Backups turned on', 'backup.disabled' => 'Backups turned off',
+    'backup.deleted' => 'Backup deleted', 'backup.passphrase_rotated' => 'New backup passphrase set',
+    'encryption.enabled' => 'Encryption turned on', 'encryption.paused' => 'Encryption turned off',
+    'encryption.migrated_encrypt' => 'Encrypted existing files', 'encryption.migrated_decrypt' => 'Decrypted existing files',
+    'apps.enabled' => 'App enabled', 'apps.disabled' => 'App disabled',
 ];
-$bad = ['login.failed', 'login.throttled', '2fa.failed', '2fa.disabled', 'user.delete', 'user.reset_2fa'];
+$bad = ['login.failed', 'login.throttled', '2fa.failed', '2fa.disabled', 'user.delete', 'user.reset_2fa', 'apppassword.revoked',
+    'backup.failed', 'backup.disabled', 'encryption.paused', 'apps.disabled'];
 ?>
 <?php if (!$activity): ?>
   <p class="muted">No activity yet.</p>

@@ -43,9 +43,51 @@ final class Maintenance
                 }
             }
             Database::run('DELETE FROM bla_login_attempts WHERE created_at < ?', [gmdate('Y-m-d H:i:s', time() - 86400)]);
+            self::sendDueReminders();
+            Backup::maybeRun();
+            Encryption::cleanupScratch();
         } finally {
             flock($fh, LOCK_UN);
             fclose($fh);
+        }
+    }
+
+    /** Email calendar reminders that have come due (checked hourly, alongside the rest of housekeeping). */
+    private static function sendDueReminders(): void
+    {
+        if (!Mailer::enabled()) {
+            return;
+        }
+        $now = Database::now();
+        $due = Database::all(
+            'SELECT o.id, o.data, u.email, u.display_name, u.username FROM bla_calendar_objects o
+             JOIN bla_calendars c ON c.id = o.calendar_id JOIN bla_users u ON u.id = c.user_id
+             WHERE o.remind_at IS NOT NULL AND o.remind_at <= ? AND o.reminder_sent_at IS NULL AND o.start_at > ?',
+            [$now, $now]
+        );
+        foreach ($due as $row) {
+            // Marked sent only once the email actually goes out — a transient send failure (SMTP
+            // briefly down, etc.) leaves reminder_sent_at NULL so the next hourly pass retries it.
+            if ($row['email'] === '') {
+                Database::run('UPDATE bla_calendar_objects SET reminder_sent_at = ? WHERE id = ?', [$now, $row['id']]);
+                continue;
+            }
+            $event = Dav\Ical::parseEvent($row['data']);
+            if (!$event) {
+                Database::run('UPDATE bla_calendar_objects SET reminder_sent_at = ? WHERE id = ?', [$now, $row['id']]);
+                continue;
+            }
+            $when = $event['allDay'] ? $event['start']->format('l, F j') : $event['start']->format('l, F j \a\t g:ia');
+            $error = Mailer::send($row['email'], 'Reminder: ' . $event['summary'], 'Upcoming event', array_filter([
+                $event['summary'] . ' — ' . $when,
+                $event['location'] !== '' ? 'Where: ' . $event['location'] : null,
+                $event['description'] !== '' ? $event['description'] : null,
+            ]));
+            if ($error === null) {
+                Database::run('UPDATE bla_calendar_objects SET reminder_sent_at = ? WHERE id = ?', [$now, $row['id']]);
+            } else {
+                error_log('[BLA-Cloud] reminder email for calendar object ' . $row['id'] . ' failed: ' . $error);
+            }
         }
     }
 }

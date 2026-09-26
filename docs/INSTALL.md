@@ -59,7 +59,7 @@ server {
     client_max_body_size 64M;
 
     # Never serve internal folders or hidden files
-    location ~ ^/(app|config|data|tests|docs)(/|$) { deny all; return 404; }
+    location ~ ^/(app|config|data|tests|docs|tools)(/|$) { deny all; return 404; }
     location ~ /\.(?!well-known) { deny all; return 404; }
     location ~ \.(sqlite|md|part|log)$ { deny all; return 404; }
 
@@ -84,7 +84,7 @@ server { listen 80; server_name cloud.example.com; return 301 https://$host$requ
 ```caddy
 cloud.example.com {
     root * /var/www/bla-cloud
-    @blocked path /app/* /config/* /data/* /tests/* /docs/* /.* *.sqlite *.md
+    @blocked path /app/* /config/* /data/* /tests/* /docs/* /tools/* /.* *.sqlite *.md
     respond @blocked 404
     request_body { max_size 64MB }
     php_fastcgi unix//run/php/php8.3-fpm.sock
@@ -133,6 +133,109 @@ Email is used for invitations, password resets and share notifications. As an ad
 
 Then use **Send a test email** on the same page. Also set **Web address** (e.g. `https://cloud.yourdomain.com`) so links in emails point to the right place.
 
+## Sync (WebDAV/CalDAV/CardDAV)
+
+Every account has an address to mount their files as a network drive, plus a calendar and address
+book, under **Sync** in the sidebar. Since sync apps can't answer a two-step verification prompt,
+each device signs in with its own **app password** instead of the account password — create one
+per device on that page, and revoke it any time without touching your main password.
+
+- **Files (WebDAV)** — `https://your-domain.com/cloud/dav/files/USERNAME/`. Mount it in Windows
+  ("Map network drive" → "Connect to a website..."), macOS Finder (**Go → Connect to Server**), or a
+  file app on your phone (e.g. FE File Explorer, Files by Readdle).
+- **Calendar (CalDAV)** and **Contacts (CardDAV)** — Apple Calendar/Contacts, Thunderbird, and DAVx5
+  (Android) can usually auto-discover both from just the server address (`https://your-domain.com/cloud/`)
+  plus the username and app password. Apps that need the full address: see the Sync page for the
+  exact URLs.
+
+**Server config:** the Nginx and Caddy examples above already route every HTTP method (PROPFIND, PUT,
+MKCOL...) to `index.php`, so nothing extra is needed. Apache's `.htaccess` (included) adds two rules
+for `/dav/` and `/.well-known/caldav`/`carddav` — if you copied an older `.htaccess`, replace it with
+the current one.
+
+There's no built-in calendar or contacts app yet (see the roadmap) — until then, use any CalDAV/CardDAV
+app to see and edit them.
+
+## Backups
+
+Turn them on under **Backups** in the admin sidebar: pick a folder (ideally outside both the
+website folder and the data folder — a sibling folder, or a mounted network drive), how often
+(daily/weekly) and how many to keep, and set a **passphrase**. That passphrase is separate from
+your account password and from the app's own encryption key: write it down somewhere safe, because
+it's the only way to restore a backup, and BLA-Cloud never stores it in a readable form.
+
+**Reliable scheduling with real cron.** By default, a scheduled backup runs as a side effect of
+someone visiting the site (like the rest of the housekeeping) — fine for an active site, less
+reliable for one nobody visits for a day or two. If your host allows cron jobs, wire one up instead:
+
+```bash
+crontab -e
+# runs every 15 minutes; each job checks whether a backup is actually due and exits quickly if not
+0,15,30,45 * * * * php /path/to/bla-cloud/tools/cron.php
+```
+
+**Verify** decrypts a backup and checks it's intact (including opening a SQLite snapshot and
+counting accounts) without touching anything live — a good habit after first setting backups up,
+and occasionally after.
+
+**Restore** (in place, on this same server) replaces the database and everyone's files with a
+backup's contents. It saves whatever was there first as its own "pre-restore safety" backup, so a
+restore can itself be undone. It expects the backup to come from an install using the same database
+type (SQLite or MySQL) as this one.
+
+**Moving to a brand-new server** (this one is gone entirely) is a manual process, since there's no
+running app yet to click "Restore" in:
+
+1. Install BLA-Cloud fresh on the new server (through the setup wizard) — or skip the wizard,
+   see step 3.
+2. Get a copy of the backup file onto the new server.
+3. From a terminal on the new server, decrypt and extract it:
+   ```bash
+   php -r '
+   require "/path/to/bla-cloud/app/bootstrap.php";
+   BlaCloud\Backup::decryptFile("/path/to/the/backup/file.bcbackup", "/tmp/restored.zip", "your passphrase");
+   (new ZipArchive())->open("/tmp/restored.zip") && (new ZipArchive())->extractTo("/tmp/restored");
+   '
+   ```
+   This gives you `/tmp/restored/config.php`, `/tmp/restored/database/` and `/tmp/restored/users/`.
+4. Put `config.php` in place at `config/config.php` (it has the original `app_key`, so 2FA secrets
+   and stored SMTP passwords keep working), the database file/dump where your `db` config in it
+   expects (SQLite: copy the `.sqlite` file over; MySQL: `mysql yourdb < database/database.sql`),
+   and `users/` inside your data folder.
+5. Visit the site. If you did skip the wizard in step 1, it now finds an existing install and just
+   signs you in.
+
+## Encryption at rest
+
+Turn it on under **Encryption** in the admin sidebar and set a passphrase (or let one be
+generated). This is separate from your account password and from the app's own encryption key —
+write it down somewhere safe, since there's no way to recover it if it's lost, and no way to
+change it later short of decrypting everything and re-encrypting with a new one.
+
+It only affects files saved from that point on. Existing files stay exactly as they are until you
+run **Encrypt existing files now**, which needs backups set up first (a safety backup is taken
+automatically before it starts). The reverse, **Decrypt existing files**, works the same way.
+
+A few things worth knowing:
+- Only file *contents* are encrypted — file and folder names are not.
+- It only covers the main files area for now, not trash or version history.
+- Because there's no seekable cipher, a large encrypted video's Range requests (skipping ahead
+  while playing) and thumbnail generation decrypt a temporary full copy first — noticeably slower
+  than for a plain file of the same size. Turn it off if that matters more than the protection.
+
+## Apps
+
+Calendar and Contacts, plus anything else you add, are apps under **Administration → Apps**, where
+you can turn each one on or off. Turning one off just hides its pages and sidebar link — it doesn't
+touch its data, and (for Calendar/Contacts specifically) doesn't stop it syncing over CalDAV/CardDAV,
+since that sync is handled by the core, not the app.
+
+To install a new app, place its folder inside `app/apps/` on your server (the same way you'd upload
+BLA-Cloud itself — FTP, File Manager, or unzip-and-upload), then enable it on that page. There's no
+in-browser "upload an app" button by design: an app is arbitrary PHP that runs in-process alongside
+the rest of BLA-Cloud, so only install ones you trust — see `app/apps/README.md` if you're writing
+your own.
+
 ## Troubleshooting
 
 | Problem | Fix |
@@ -146,6 +249,9 @@ Then use **Send a test email** on the same page. Also set **Web address** (e.g. 
 | Test email fails | Check server, port and security match your provider. Gmail needs an App password. Some hosts block outgoing port 587, so try 465 with SSL. |
 | Locked out after many attempts | Wait 15 minutes. The block lifts automatically. |
 | Uploads stop partway | Check free disk space on the **System status** page. |
+| WebDAV/CalDAV/CardDAV app rejects the password | Use an **app password** from the Sync page, not your account password. |
+| "Wrong passphrase, or this backup file is corrupted" | Double-check the backup passphrase (Backups page) — it's separate from your account password, and rotating it doesn't change what older backups need. |
+| A photo/video is slow to open, or "Encrypt/Decrypt existing files" is greyed out | The first is expected for large files with encryption on (see Encryption at rest above). The second needs backups set up first (Backups page) — it takes a safety backup automatically before the bulk change. |
 
 ## Moving or re-installing
 

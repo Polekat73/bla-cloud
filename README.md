@@ -3,9 +3,10 @@
 **Your own private cloud, by [Best Life Apps](https://bestlifeapps.com).**
 A safe place for your files that runs on your own server, written from scratch in plain PHP. There's no Docker to set up and it works on ordinary web hosting.
 
-> **Status: Stage 3 of the roadmap (v0.3.0).** Setup wizard, secure sign-in with two-step verification, a full file manager,
-> **people management and sharing** (with other people and by public link) are done.
-> Phone/laptop sync, calendars, contacts and backups are coming next (see [docs/ROADMAP.md](docs/ROADMAP.md)).
+> **Status: Stage 9 of the roadmap (v0.8.0).** Setup wizard, secure sign-in with two-step verification, a full file manager,
+> people management and sharing, WebDAV/CalDAV/CardDAV sync, encrypted backups, encryption at rest, and now an
+> **apps system** (with the built-in Calendar & Contacts converted to run on it) are done. Safe in-app updates are next,
+> once there's a release channel to check against (see [docs/ROADMAP.md](docs/ROADMAP.md)).
 
 ---
 
@@ -39,9 +40,23 @@ A safe place for your files that runs on your own server, written from scratch i
   - Email a link straight from the share dialog, and see how many times a link was opened
   - *Shared by me* page to review and stop any share in one click
   - Shares follow files when they're renamed or moved, and stop when the file is deleted
+- **Calendar** — month, week, day and agenda views, events with location/description and an optional
+  email reminder, multiple calendars
+- **Contacts** — a searchable address book with phone numbers, emails, a postal address and a photo
+- **Sync** — mount your files as a network drive (WebDAV) and sync your calendar and contacts (CalDAV/CardDAV)
+  to your phone, computer or apps like Thunderbird, Outlook or Apple Calendar/Contacts. Each device gets
+  its own revocable **app password**, since sync apps can't answer a two-step verification prompt.
 - **Email** through any SMTP server (Gmail, Outlook, your host…) or the server's own mail, with branded messages
+- **Encrypted backups.** Scheduled snapshots of your database and files, encrypted with a passphrase
+  only you know, with a "verify" restore drill and one-click restore.
+- **Encryption at rest.** Optionally encrypt file contents on disk under a passphrase separate from
+  your account password — protects against anyone who only gets the raw data folder.
+- **Apps system.** Calendar and Contacts are built as apps on a small plugin framework — enable or
+  disable any app from Administration → Apps, and add your own by dropping a folder into `app/apps/`
+  (see `app/apps/README.md`).
 - **Automatic upgrades.** Upload a new version over the old one and the database updates itself on the next page load.
-- **Housekeeping without cron.** Old trash, old versions and temp files are cleaned up automatically.
+- **Housekeeping without cron.** Old trash, old versions, temp files and scheduled backups are handled
+  automatically — or wire up real cron (`tools/cron.php`) on hosts that allow it.
 - **Security activity log.** You can see who signed in, from where, and what changed.
 - **System status page** for admins: server health, disk space, database, and warnings.
 - **Best Life Apps look and feel** throughout. Fonts are served from your own server, so nothing loads from Google.
@@ -69,11 +84,12 @@ The full guide covers shared hosting, a VPS (Nginx/Caddy) and reverse proxies: *
 
 ```bash
 cd bla-cloud
-php -S localhost:8080
+php -S localhost:8080 router.php
 # open http://localhost:8080
 ```
 
-(The built-in PHP server is for testing only. It ignores the `.htaccess` protections.)
+(The built-in PHP server is for testing only. It ignores the `.htaccess` protections; `router.php`
+just re-creates the routing so WebDAV/CalDAV/CardDAV addresses under `/dav/` also work locally.)
 
 ## Run the tests
 
@@ -97,6 +113,7 @@ app/                 Program code (blocked from the web)
   lib/               Core: Auth, Totp, Storage, Security, Database…
   controllers/       Pages: setup, sign-in, files, settings, admin
   views/             HTML templates
+  apps/              Installed apps (Calendar, Contacts…) — see app/apps/README.md
 assets/              CSS, JavaScript, fonts, logo
 config/              Your config.php is created here by setup (blocked from the web)
 data/                Fallback storage folder if you can't use one outside the website

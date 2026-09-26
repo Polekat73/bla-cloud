@@ -43,9 +43,10 @@ final class Thumbnails
             @touch($out); // mark as recently used
             return [$out, $mime];
         }
-        $ok = extension_loaded('imagick') ? $this->withImagick($abs, $out, $size, $webp) : false;
+        $source = Encryption::resolvePlaintext($abs);
+        $ok = extension_loaded('imagick') ? $this->withImagick($source, $out, $size, $webp) : false;
         if (!$ok) {
-            $ok = $this->withGd($abs, $out, $size, $webp);
+            $ok = $this->withGd($source, $out, $size, $webp);
         }
         if (!$ok || !is_file($out)) {
             throw new StorageException('Could not make a preview for this image.', 415);

@@ -101,6 +101,17 @@ final class Request
         return $dir === '.' ? '' : $dir;
     }
 
+    /** The request path with the app's base path removed, e.g. "/dav/files/admin/Photos". */
+    public static function path(): string
+    {
+        $raw = (string) parse_url($_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH);
+        $base = self::basePath();
+        if ($base !== '' && str_starts_with($raw, $base)) {
+            $raw = substr($raw, strlen($base));
+        }
+        return '/' . ltrim($raw, '/');
+    }
+
     public static function ipInRange(string $ip, string $cidr): bool
     {
         if (!str_contains($cidr, '/')) {

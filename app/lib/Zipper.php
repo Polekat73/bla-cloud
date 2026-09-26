@@ -72,20 +72,34 @@ final class Zipper
         if ($zip->open($tmp, \ZipArchive::CREATE | \ZipArchive::EXCL) !== true) {
             throw new StorageException('Could not create the zip file.');
         }
-        foreach ($entries as [$abs, $name]) {
-            if ($abs === null) {
-                $zip->addEmptyDir(rtrim($name, '/'));
-                continue;
+        // ZipArchive reads each addFile() source lazily, only when close() runs — so a decrypted
+        // temp copy has to survive until after close(), not be cleaned up as each entry is added.
+        $decryptedTemps = [];
+        try {
+            foreach ($entries as [$abs, $name]) {
+                if ($abs === null) {
+                    $zip->addEmptyDir(rtrim($name, '/'));
+                    continue;
+                }
+                $srcPath = $abs;
+                if (Encryption::isEncryptedFile($abs)) {
+                    $srcPath = Encryption::decryptToScratch($abs);
+                    $decryptedTemps[] = $srcPath;
+                }
+                $zip->addFile($srcPath, $name);
+                $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
+                if (in_array($ext, self::STORED, true) && method_exists($zip, 'setCompressionName')) {
+                    $zip->setCompressionName($name, \ZipArchive::CM_STORE); // already compressed: just store
+                }
             }
-            $zip->addFile($abs, $name);
-            $ext = strtolower(pathinfo($name, PATHINFO_EXTENSION));
-            if (in_array($ext, self::STORED, true) && method_exists($zip, 'setCompressionName')) {
-                $zip->setCompressionName($name, \ZipArchive::CM_STORE); // already compressed: just store
+            if (!$zip->close()) {
+                @unlink($tmp);
+                throw new StorageException('Could not finish the zip file.');
             }
-        }
-        if (!$zip->close()) {
-            @unlink($tmp);
-            throw new StorageException('Could not finish the zip file.');
+        } finally {
+            foreach ($decryptedTemps as $t) {
+                @unlink($t);
+            }
         }
         $label = count($paths) === 1 ? basename(Storage::normalize($paths[0])) : 'BLA-Cloud files';
         return [$tmp, $label . '.zip'];

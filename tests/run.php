@@ -12,6 +12,19 @@ if (PHP_SAPI !== 'cli') {
 require dirname(__DIR__) . '/app/bootstrap.php';
 restore_exception_handler();
 
+use BlaCloud\AppPasswords;
+use BlaCloud\Apps;
+use BlaCloud\Backup;
+use BlaCloud\Database;
+use BlaCloud\Encryption;
+use BlaCloud\FileCrypto;
+use BlaCloud\Dav\CalendarBackend;
+use BlaCloud\Dav\ContactsBackend;
+use BlaCloud\Dav\Ical;
+use BlaCloud\Dav\Provisioning;
+use BlaCloud\Dav\Vcard;
+use BlaCloud\Dav\Vobject;
+use BlaCloud\Dav\Xml;
 use BlaCloud\Request;
 use BlaCloud\Security;
 use BlaCloud\Storage;
@@ -258,6 +271,269 @@ file_put_contents($tmp . '/users/' . $newId . '/files/x.txt', 'x');
 check('deleting a user removes their data', !is_dir($tmp . '/users/' . $newId) && \BlaCloud\Users::find($newId) === null);
 [$mt, $mh] = \BlaCloud\Mailer::render('Hi <b>', ['Line & <script>'], 'Go', 'https://x.test/?a=1&b=2');
 check('email HTML is escaped', str_contains($mh, 'Line &amp; &lt;script&gt;') && str_contains($mh, 'a=1&amp;b=2') && !str_contains($mh, '<script>'));
+
+echo "Sync (WebDAV/CalDAV/CardDAV)\n";
+Provisioning::seedDefaults(1); // user 1 was inserted with raw SQL above, so it has none yet
+check('seeding gives a default calendar', \BlaCloud\Database::one(
+    "SELECT id FROM bla_calendars WHERE user_id = 1 AND uri = 'personal'") !== null);
+check('seeding gives a default address book', \BlaCloud\Database::one(
+    "SELECT id FROM bla_addressbooks WHERE user_id = 1 AND uri = 'contacts'") !== null);
+Provisioning::seedDefaults(1); // must not duplicate on a second call
+check('seeding defaults twice does not duplicate', (int) \BlaCloud\Database::one(
+    "SELECT COUNT(*) AS n FROM bla_calendars WHERE user_id = 1")['n'] === 1);
+
+[$apId, $apSecret] = AppPasswords::create(1, 'Test phone');
+check('app password verifies with the right secret', AppPasswords::verify('ben-admin-does-not-exist', $apSecret) === null);
+$_SERVER['REMOTE_ADDR'] = '198.51.100.1'; // fresh IP so earlier throttling in this run doesn't interfere
+$adminRow = \BlaCloud\Users::find(1);
+check('app password verifies for the right user', (AppPasswords::verify($adminRow['username'], $apSecret)['id'] ?? null) === 1);
+check('app password rejects the wrong secret', AppPasswords::verify($adminRow['username'], 'not-the-secret') === null);
+check('account password does not work as an app password', AppPasswords::verify($adminRow['username'], 'quiet river morning bread') === null);
+AppPasswords::revoke(1, $apId);
+check('revoked app password stops working', AppPasswords::verify($adminRow['username'], $apSecret) === null);
+check('format() groups into dashes', AppPasswords::format('abcdefgh') === 'abcd-efgh');
+
+check('UID extracted', Vobject::extractUid("BEGIN:VEVENT\nUID:abc-123\nSUMMARY:Hi\nEND:VEVENT") === 'abc-123');
+check('UID extraction handles folded lines', Vobject::extractUid("BEGIN:VEVENT\nUID:abc-\n 123\nEND:VEVENT") === 'abc-123');
+check('missing UID returns null', Vobject::extractUid("BEGIN:VEVENT\nSUMMARY:Hi\nEND:VEVENT") === null);
+
+check('propfind with no body means "everything"', Xml::propfindProps(null) === null);
+$doc = new DOMDocument();
+$doc->loadXML('<d:propfind xmlns:d="DAV:"><d:prop><d:displayname/><d:getetag/></d:prop></d:propfind>');
+check('propfind parses requested prop names', Xml::propfindProps($doc) === ['{DAV:}displayname', '{DAV:}getetag']);
+$allpropDoc = new DOMDocument();
+$allpropDoc->loadXML('<d:propfind xmlns:d="DAV:"><d:allprop/></d:propfind>');
+check('allprop means "everything" too', Xml::propfindProps($allpropDoc) === null);
+
+echo "Calendar app (iCalendar read/write)\n";
+$start = new DateTimeImmutable('2026-10-01 09:00:00', new DateTimeZone('UTC'));
+$end = new DateTimeImmutable('2026-10-01 10:00:00', new DateTimeZone('UTC'));
+$ics = Ical::buildEvent(['uid' => 'evt-1@test', 'summary' => 'Team sync', 'description' => "Line one\nLine two",
+    'location' => 'Room 5, "The Lounge"', 'allDay' => false, 'start' => $start, 'end' => $end, 'remindMinutesBefore' => 30]);
+check('built ICS has the right shape', str_contains($ics, 'BEGIN:VEVENT') && str_contains($ics, 'BEGIN:VALARM'));
+$parsed = Ical::parseEvent($ics);
+check('parsed summary round-trips', $parsed['summary'] === 'Team sync');
+check('parsed multi-line description round-trips', $parsed['description'] === "Line one\nLine two");
+check('parsed location with punctuation round-trips', $parsed['location'] === 'Room 5, "The Lounge"');
+check('parsed start round-trips', $parsed['start']->format('Y-m-d H:i:s') === '2026-10-01 09:00:00');
+check('parsed end round-trips', $parsed['end']->format('Y-m-d H:i:s') === '2026-10-01 10:00:00');
+check('reminder fires 30 minutes before start', $parsed['remindAt']->format('Y-m-d H:i:s') === '2026-10-01 08:30:00');
+check('event with no DTEND defaults to +1 hour', Ical::parseEvent(
+    "BEGIN:VEVENT\nUID:x\nDTSTART:20261001T090000Z\nSUMMARY:No end\nEND:VEVENT")['end']->format('H:i') === '10:00');
+
+$allDayIcs = Ical::buildEvent(['uid' => 'evt-2@test', 'summary' => 'Holiday', 'description' => '', 'location' => '',
+    'allDay' => true, 'start' => new DateTimeImmutable('2026-12-25', new DateTimeZone('UTC')),
+    'end' => new DateTimeImmutable('2026-12-26', new DateTimeZone('UTC')), 'remindMinutesBefore' => null]);
+$allDayParsed = Ical::parseEvent($allDayIcs);
+check('all-day event parses as all-day', $allDayParsed['allDay'] === true);
+check('all-day event has no reminder when none set', $allDayParsed['remindAt'] === null);
+check('not-iCalendar text has no VEVENT to parse', Ical::parseEvent('not an event') === null);
+
+$cal = \BlaCloud\Database::one("SELECT id FROM bla_calendars WHERE user_id = 1 AND uri = 'personal'");
+CalendarBackend::writeObject((int) $cal['id'], 'evt-1.ics', $ics);
+$row = \BlaCloud\Database::one('SELECT * FROM bla_calendar_objects WHERE calendar_id = ? AND uri = ?', [$cal['id'], 'evt-1.ics']);
+check('writeObject denormalises start/end/reminder', $row['start_at'] === '2026-10-01 09:00:00' && $row['remind_at'] === '2026-10-01 08:30:00');
+check('writeObject bumped the calendar ctag', (int) \BlaCloud\Database::one('SELECT ctag FROM bla_calendars WHERE id = ?', [$cal['id']])['ctag'] === 2);
+check('a due, unsent, future reminder is found by the reminder query', (bool) \BlaCloud\Database::one(
+    "SELECT id FROM bla_calendar_objects WHERE remind_at <= ? AND reminder_sent_at IS NULL AND start_at > ?",
+    ['2026-10-01 09:00:00', '2026-01-01 00:00:00']));
+check('deleteObjectByUri removes it and bumps ctag again', CalendarBackend::deleteObjectByUri((int) $cal['id'], 'evt-1.ics')
+    && (int) \BlaCloud\Database::one('SELECT ctag FROM bla_calendars WHERE id = ?', [$cal['id']])['ctag'] === 3);
+check('deleting a missing object returns false', CalendarBackend::deleteObjectByUri((int) $cal['id'], 'nope.ics') === false);
+
+echo "Contacts app (vCard read/write)\n";
+$vcf = Vcard::buildContact(['uid' => 'c-1@test', 'given' => 'Ada', 'family' => 'Lovelace',
+    'phones' => [['type' => 'cell', 'value' => '+1 555-0100'], ['type' => 'home', 'value' => '']],
+    'emails' => [['type' => 'work', 'value' => 'ada@example.com']],
+    'address' => ['street' => '1 Analytical Engine Way', 'city' => 'London', 'region' => '', 'postal' => 'SW1', 'country' => 'UK'],
+    'note' => "VIP\nCall first"]);
+check('built vCard has the right shape', str_contains($vcf, 'BEGIN:VCARD') && str_contains($vcf, 'FN:Ada Lovelace'));
+$c = Vcard::parseContact($vcf);
+check('parsed full name round-trips', $c['fn'] === 'Ada Lovelace');
+check('blank phone value is dropped, real one kept', count($c['phones']) === 1 && $c['phones'][0]['value'] === '+1 555-0100');
+check('email round-trips', $c['emails'][0]['value'] === 'ada@example.com');
+check('address round-trips', $c['address']['city'] === 'London' && $c['address']['country'] === 'UK');
+check('multi-line note round-trips', $c['note'] === "VIP\nCall first");
+check('no photo means null, not a broken data URI', $c['photo'] === null);
+
+$photoVcf = Vcard::buildContact(['given' => 'Grace', 'family' => 'Hopper', 'photoBase64' => base64_encode('not-really-a-jpeg'), 'photoType' => 'JPEG']);
+check('long PHOTO line gets folded under 76 octets per line', max(array_map('strlen', explode("\r\n", $photoVcf))) < 76);
+check('folded PHOTO still parses back out', str_starts_with(Vcard::parseContact($photoVcf)['photo'] ?? '', 'data:image/jpeg;base64,'));
+
+$book = \BlaCloud\Database::one("SELECT id FROM bla_addressbooks WHERE user_id = 1 AND uri = 'contacts'");
+ContactsBackend::writeObject((int) $book['id'], 'c-1.vcf', $vcf);
+check('writeObject denormalises fn for listing/search', \BlaCloud\Database::one(
+    'SELECT fn FROM bla_contacts WHERE addressbook_id = ? AND uri = ?', [$book['id'], 'c-1.vcf'])['fn'] === 'Ada Lovelace');
+check('deleteObjectByUri removes the contact', ContactsBackend::deleteObjectByUri((int) $book['id'], 'c-1.vcf')
+    && \BlaCloud\Database::one('SELECT id FROM bla_contacts WHERE addressbook_id = ? AND uri = ?', [$book['id'], 'c-1.vcf']) === null);
+
+// Same LIKE query ContactsController::index() runs, exercised directly against SQLite (the default
+// driver) — SQLite's LIKE has no default escape character, so a query without ESCAPE silently makes
+// the \_ / \% escaping below into a no-op and '_'/'%' in a name behave as wildcards.
+ContactsBackend::writeObject((int) $book['id'], 'ob.vcf', Vcard::buildContact(['given' => "O_Brien", 'family' => '']));
+ContactsBackend::writeObject((int) $book['id'], 'os.vcf', Vcard::buildContact(['given' => 'OxBrien', 'family' => '']));
+$likeSearch = fn (string $q) => \BlaCloud\Database::all(
+    "SELECT fn FROM bla_contacts WHERE addressbook_id = ? AND fn LIKE ? ESCAPE '\\' ORDER BY fn",
+    [$book['id'], '%' . str_replace(['\\', '%', '_'], ['\\\\', '\%', '\_'], $q) . '%']
+);
+check('literal underscore in search matches only the literal name', array_column($likeSearch('O_Brien'), 'fn') === ['O_Brien']);
+ContactsBackend::deleteObjectByUri((int) $book['id'], 'ob.vcf');
+ContactsBackend::deleteObjectByUri((int) $book['id'], 'os.vcf');
+
+echo "Backups\n";
+$encTmp = sys_get_temp_dir() . '/bla-enc-test-' . bin2hex(random_bytes(4));
+mkdir($encTmp);
+file_put_contents($encTmp . '/plain.txt', str_repeat('The quick brown fox jumps over the lazy dog. ', 100_000)); // ~4.6MB, spans several chunks
+Backup::encryptFile($encTmp . '/plain.txt', $encTmp . '/enc.bin', 'correct horse battery staple');
+Backup::decryptFile($encTmp . '/enc.bin', $encTmp . '/roundtrip.txt', 'correct horse battery staple');
+check('encrypt/decrypt round-trips a multi-chunk file exactly', hash_file('sha256', $encTmp . '/plain.txt') === hash_file('sha256', $encTmp . '/roundtrip.txt'));
+check('wrong passphrase is rejected', throws(fn () => Backup::decryptFile($encTmp . '/enc.bin', $encTmp . '/bad.txt', 'wrong passphrase entirely')));
+file_put_contents($encTmp . '/notabackup.bin', random_bytes(64));
+check('a random file is rejected as not a backup', throws(fn () => Backup::decryptFile($encTmp . '/notabackup.bin', $encTmp . '/x.txt', 'anything')));
+exec('rm -rf ' . escapeshellarg($encTmp));
+
+// Backup::run() zips config/config.php by its real on-disk path (Config::path() isn't affected by the
+// test's injected config array), so give it a throwaway one here and put back whatever was there before.
+$realConfigPath = dirname(__DIR__) . '/config/config.php';
+$hadRealConfig = is_file($realConfigPath);
+$savedConfig = $hadRealConfig ? file_get_contents($realConfigPath) : null;
+if (!$hadRealConfig) {
+    file_put_contents($realConfigPath, "<?php\nreturn [];\n");
+}
+try {
+    $backupDir = $tmp . '/backups';
+    check('enable() rejects a short passphrase', throws(fn () => Backup::enable($backupDir, 'daily', 7, 'short')));
+    Backup::enable($backupDir, 'daily', 3, 'a proper backup passphrase');
+    check('enable() creates the folder', is_dir($backupDir));
+    check('backups report enabled once configured', Backup::enabled());
+
+    $r1 = Backup::run('manual');
+    check('run() reports ok and a filename', $r1['ok'] === true && $r1['filename'] !== '');
+    check('run() writes the encrypted file to disk', is_file($backupDir . '/' . $r1['filename']));
+    check('run() records a row', count(Backup::list()) === 1);
+
+    $v = Backup::verify((int) Backup::list()[0]['id'], 'a proper backup passphrase');
+    check('verify() succeeds with the right passphrase', $v['ok'] === true);
+    check('verify() fails with the wrong passphrase', throws(fn () => Backup::verify((int) Backup::list()[0]['id'], 'not it')));
+
+    Backup::run('manual');
+    Backup::run('manual');
+    Backup::run('manual');
+    check('prune keeps only the newest N backups', count(Backup::list()) === 3);
+
+    // Restore round-trip: change a row, restore from an earlier backup, confirm the change is undone.
+    Database::run("UPDATE bla_users SET display_name = 'Changed after backup' WHERE id = 1");
+    $toRestore = (int) Backup::list()[array_key_last(Backup::list())]['id']; // oldest of the kept ones
+    Backup::restore($toRestore, 'a proper backup passphrase');
+    $after = Database::one('SELECT display_name FROM bla_users WHERE id = 1');
+    check('restore() puts the database back', $after !== null && $after['display_name'] !== 'Changed after backup');
+    check('restore() makes its own safety backup first', (bool) Database::one("SELECT id FROM bla_backups WHERE kind = 'safety'"));
+    check('restore() leaves no stray .pre-restore folder behind', glob($tmp . '/users.pre-restore-*') === []);
+    check('restore() brings the files back too', file_get_contents($F('/a.txt')) === 'x');
+
+    check('rotatePassphrase() rejects a short one', throws(fn () => Backup::rotatePassphrase('short')));
+    Backup::rotatePassphrase('a brand new passphrase');
+    check('old backups need the old passphrase after rotating', throws(fn () => Backup::verify($toRestore, 'a brand new passphrase')));
+
+    $countBefore = count(Backup::list());
+    $victim = Database::one('SELECT filename FROM bla_backups WHERE id = ?', [$toRestore]);
+    Backup::deleteFile($toRestore);
+    check('deleteFile() removes the row and the file', count(Backup::list()) === $countBefore - 1
+        && $victim !== null && !is_file($backupDir . '/' . $victim['filename']));
+} finally {
+    if ($hadRealConfig) {
+        file_put_contents($realConfigPath, $savedConfig);
+    } else {
+        @unlink($realConfigPath);
+    }
+}
+
+echo "Encryption at rest\n";
+check('encryption starts off', !Encryption::enabled() && !Encryption::hasKey());
+check('pause()/resume() without a key first is rejected', throws(fn () => Encryption::resume()));
+check('enable() rejects a short passphrase', throws(fn () => Encryption::enable('short')));
+Encryption::enable('a proper file encryption passphrase');
+check('enable() turns it on', Encryption::enabled() && Encryption::hasKey());
+
+// FileCrypto: the size header lets a caller learn the plaintext size without decrypting.
+$cryptTmp = sys_get_temp_dir() . '/bla-crypt-test-' . bin2hex(random_bytes(4));
+mkdir($cryptTmp);
+$plain = str_repeat('x', 12345);
+file_put_contents($cryptTmp . '/p.txt', $plain);
+FileCrypto::encryptFile($cryptTmp . '/p.txt', $cryptTmp . '/p.enc', 'pw', 'MYMAGIC1');
+check('hasMagic finds the marker', FileCrypto::hasMagic($cryptTmp . '/p.enc', 'MYMAGIC1'));
+check('hasMagic is false for a plain file', !FileCrypto::hasMagic($cryptTmp . '/p.txt', 'MYMAGIC1'));
+check('plaintextSize reads the size without a passphrase', FileCrypto::plaintextSize($cryptTmp . '/p.enc', 'MYMAGIC1') === 12345);
+check('plaintextSize is null for a plain file', FileCrypto::plaintextSize($cryptTmp . '/p.txt', 'MYMAGIC1') === null);
+exec('rm -rf ' . escapeshellarg($cryptTmp));
+
+// Uploading through the normal Storage path while encryption is on: the file on disk must be
+// unreadable as plain bytes, but resolvePlaintext() must hand back exactly what was uploaded.
+$secretUp = function (string $content) use ($fs, $tmp) {
+    $t = tempnam($tmp, 'up');
+    file_put_contents($t, $content);
+    return $fs->receiveChunk(bin2hex(random_bytes(10)), 0, $t, true, '', 'secret.bin', strlen($content));
+};
+$secretUp('secret family photos data, not plain on disk');
+$encAbs = $F('/secret.bin');
+check('the file on disk is not the plaintext', file_get_contents($encAbs) !== 'secret family photos data, not plain on disk');
+check('Encryption recognises it as encrypted', Encryption::isEncryptedFile($encAbs));
+check('contentSize() reports the real (plaintext) size', Encryption::contentSize($encAbs) === strlen('secret family photos data, not plain on disk'));
+$resolved = Encryption::resolvePlaintext($encAbs);
+check('resolvePlaintext() decrypts back to the original bytes', file_get_contents($resolved) === 'secret family photos data, not plain on disk');
+check('resolvePlaintext() of a plain file returns the same path unchanged', Encryption::resolvePlaintext($F('/a.txt')) === $F('/a.txt'));
+
+// Pausing stops new files from being encrypted, but doesn't touch what's already there.
+Encryption::pause();
+check('pause() turns enabled() off but keeps the key', !Encryption::enabled() && Encryption::hasKey());
+$secretUp('now plain again, encryption is paused');
+check('a file saved while paused is plain on disk', file_get_contents($F('/secret.bin')) === 'now plain again, encryption is paused');
+Encryption::resume();
+check('resume() turns it back on without needing the passphrase again', Encryption::enabled());
+
+// Bulk migration over whatever's on disk for every account right now.
+$r = Encryption::encryptExistingFiles();
+check('encryptExistingFiles() converts the plain ones and skips the rest', $r['converted'] >= 1 && $r['errors'] === []);
+check('files folder is now fully encrypted', Encryption::isEncryptedFile($F('/secret.bin')) && Encryption::isEncryptedFile($F('/a.txt')));
+$r2 = Encryption::encryptExistingFiles();
+check('running it again converts nothing new', $r2['converted'] === 0 && $r2['skipped'] > 0);
+$r3 = Encryption::decryptExistingFiles();
+check('decryptExistingFiles() puts everything back to plain', $r3['converted'] > 0
+    && !Encryption::isEncryptedFile($F('/secret.bin')) && file_get_contents($F('/a.txt')) === 'x');
+
+echo "Apps (plugin framework)\n";
+Apps::resetCache();
+$allApps = Apps::all();
+check('discovers the calendar app', isset($allApps['calendar']) && $allApps['calendar']['name'] === 'Calendar');
+check('discovers the contacts app', isset($allApps['contacts']) && $allApps['contacts']['name'] === 'Contacts');
+check('both enabled by default', Apps::isEnabled('calendar') && Apps::isEnabled('contacts'));
+check('unknown app is not enabled', !Apps::isEnabled('nope'));
+check('routes() includes both apps', isset(Apps::routes()['calendar']) && isset(Apps::routes()['contacts.save']));
+$navRoutes = array_column(Apps::navItems(), 'route');
+check('navItems() includes both apps', in_array('calendar', $navRoutes, true) && in_array('contacts', $navRoutes, true));
+
+Apps::setEnabled('calendar', false);
+Apps::resetCache();
+check('disabling persists', !Apps::isEnabled('calendar') && Apps::isEnabled('contacts'));
+check('disabled app drops out of routes()', !isset(Apps::routes()['calendar']) && isset(Apps::routes()['contacts']));
+check('disabled app drops out of navItems()', !in_array('calendar', array_column(Apps::navItems(), 'route'), true));
+
+Apps::setEnabled('calendar', true);
+Apps::resetCache();
+check('re-enabling persists', Apps::isEnabled('calendar'));
+check('setEnabled() on an unknown app throws', throws(fn () => Apps::setEnabled('nope', true)));
+
+$badAppDir = dirname(__DIR__) . '/app/apps/__test_bad__';
+mkdir($badAppDir);
+file_put_contents($badAppDir . '/manifest.php', "<?php\nreturn ['id' => '__test_bad__', 'name' => 'Bad'];\n"); // missing 'routes'
+Apps::resetCache();
+try {
+    check('a manifest missing required keys is skipped, not fatal', !isset(Apps::all()['__test_bad__']));
+} finally {
+    unlink($badAppDir . '/manifest.php');
+    rmdir($badAppDir);
+    Apps::resetCache();
+}
 
 $pdo = null;
 exec('rm -rf ' . escapeshellarg($tmp));

@@ -11,7 +11,7 @@ use PDO;
  */
 final class Schema
 {
-    public const VERSION = 3;
+    public const VERSION = 6;
 
     public static function create(PDO $pdo, string $driver): void
     {
@@ -37,6 +37,33 @@ final class Schema
                 $pdo->exec($sql);
             }
             self::setVersion($pdo, $mysql, $v);
+            if ($v === 5) {
+                self::backfillEventFields($pdo);
+            }
+        }
+    }
+
+    /** v5 adds denormalised columns (start/end/reminder time, contact display name) read from the
+     *  raw iCalendar/vCard text — populate them for any objects that synced in before the upgrade. */
+    private static function backfillEventFields(\PDO $pdo): void
+    {
+        $upd = $pdo->prepare('UPDATE bla_calendar_objects SET start_at = ?, end_at = ?, all_day = ?, remind_at = ? WHERE id = ?');
+        foreach ($pdo->query('SELECT id, data FROM bla_calendar_objects WHERE start_at IS NULL')->fetchAll() as $row) {
+            $e = Dav\Ical::parseEvent((string) $row['data']);
+            if (!$e) {
+                continue;
+            }
+            $upd->execute([
+                $e['start']->format('Y-m-d H:i:s'), $e['end']->format('Y-m-d H:i:s'),
+                $e['allDay'] ? 1 : 0, $e['remindAt']?->format('Y-m-d H:i:s'), $row['id'],
+            ]);
+        }
+        $updC = $pdo->prepare('UPDATE bla_contacts SET fn = ? WHERE id = ?');
+        foreach ($pdo->query("SELECT id, data FROM bla_contacts WHERE fn = ''")->fetchAll() as $row) {
+            $c = Dav\Vcard::parseContact((string) $row['data']);
+            if ($c['fn'] !== '') {
+                $updC->execute([$c['fn'], $row['id']]);
+            }
         }
     }
 
@@ -153,6 +180,117 @@ final class Schema
                 )$tail",
                 $idx . "idx_shares_owner ON bla_shares $pidx_owner",
                 $idx . 'idx_shares_recipient ON bla_shares (recipient_id)',
+            ],
+            4 => [
+                // Per-device passwords for WebDAV/CalDAV/CardDAV (they can't do 2FA prompts).
+                "CREATE TABLE IF NOT EXISTS bla_app_passwords (
+                    id $id,
+                    user_id $uid NOT NULL,
+                    label VARCHAR(128) NOT NULL DEFAULT '',
+                    password_hash VARCHAR(255) NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    last_used_at DATETIME NULL,
+                    last_used_ip VARCHAR(45) NOT NULL DEFAULT '',
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE
+                )$tail",
+                $idx . 'idx_app_passwords_user ON bla_app_passwords (user_id)',
+                // Short-lived WebDAV write locks (LOCK/UNLOCK), mainly so Windows/macOS allow saving files.
+                "CREATE TABLE IF NOT EXISTS bla_dav_locks (
+                    id $id,
+                    user_id $uid NOT NULL,
+                    path $path NOT NULL,
+                    token VARCHAR(64) NOT NULL UNIQUE,
+                    owner VARCHAR(255) NOT NULL DEFAULT '',
+                    depth VARCHAR(8) NOT NULL DEFAULT '0',
+                    expires_at DATETIME NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE
+                )$tail",
+                $idx . "idx_dav_locks_path ON bla_dav_locks $pidx",
+                // Calendars (CalDAV) and their events/todos, stored as raw iCalendar text.
+                "CREATE TABLE IF NOT EXISTS bla_calendars (
+                    id $id,
+                    user_id $uid NOT NULL,
+                    uri VARCHAR(64) NOT NULL,
+                    display_name VARCHAR(128) NOT NULL DEFAULT '',
+                    color VARCHAR(7) NOT NULL DEFAULT '#c9a227',
+                    ctag INT NOT NULL DEFAULT 1,
+                    created_at DATETIME NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE,
+                    UNIQUE (user_id, uri)
+                )$tail",
+                "CREATE TABLE IF NOT EXISTS bla_calendar_objects (
+                    id $id,
+                    calendar_id $uid NOT NULL,
+                    uri VARCHAR(255) NOT NULL,
+                    uid VARCHAR(255) NOT NULL DEFAULT '',
+                    etag VARCHAR(64) NOT NULL,
+                    data TEXT NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL,
+                    FOREIGN KEY (calendar_id) REFERENCES bla_calendars(id) ON DELETE CASCADE,
+                    UNIQUE (calendar_id, uri)
+                )$tail",
+                $idx . 'idx_calendar_objects_cal ON bla_calendar_objects (calendar_id)',
+                // Address books (CardDAV) and their contacts, stored as raw vCard text.
+                "CREATE TABLE IF NOT EXISTS bla_addressbooks (
+                    id $id,
+                    user_id $uid NOT NULL,
+                    uri VARCHAR(64) NOT NULL,
+                    display_name VARCHAR(128) NOT NULL DEFAULT '',
+                    ctag INT NOT NULL DEFAULT 1,
+                    created_at DATETIME NOT NULL,
+                    FOREIGN KEY (user_id) REFERENCES bla_users(id) ON DELETE CASCADE,
+                    UNIQUE (user_id, uri)
+                )$tail",
+                "CREATE TABLE IF NOT EXISTS bla_contacts (
+                    id $id,
+                    addressbook_id $uid NOT NULL,
+                    uri VARCHAR(255) NOT NULL,
+                    uid VARCHAR(255) NOT NULL DEFAULT '',
+                    etag VARCHAR(64) NOT NULL,
+                    data TEXT NOT NULL,
+                    created_at DATETIME NOT NULL,
+                    updated_at DATETIME NOT NULL,
+                    FOREIGN KEY (addressbook_id) REFERENCES bla_addressbooks(id) ON DELETE CASCADE,
+                    UNIQUE (addressbook_id, uri)
+                )$tail",
+                $idx . 'idx_contacts_book ON bla_contacts (addressbook_id)',
+                // Give every existing account its default calendar & address book (new ones get this at creation time).
+                "INSERT INTO bla_calendars (user_id, uri, display_name, color, ctag, created_at)
+                 SELECT id, 'personal', 'Personal', '#c9a227', 1, '" . gmdate('Y-m-d H:i:s') . "' FROM bla_users u
+                 WHERE NOT EXISTS (SELECT 1 FROM bla_calendars c WHERE c.user_id = u.id AND c.uri = 'personal')",
+                "INSERT INTO bla_addressbooks (user_id, uri, display_name, ctag, created_at)
+                 SELECT id, 'contacts', 'Contacts', 1, '" . gmdate('Y-m-d H:i:s') . "' FROM bla_users u
+                 WHERE NOT EXISTS (SELECT 1 FROM bla_addressbooks a WHERE a.user_id = u.id AND a.uri = 'contacts')",
+            ],
+            5 => [
+                // Denormalised from the raw iCalendar text, so the calendar app can query a date
+                // range (and due reminders) without re-parsing every event on every page load.
+                "ALTER TABLE bla_calendar_objects ADD COLUMN start_at DATETIME NULL",
+                "ALTER TABLE bla_calendar_objects ADD COLUMN end_at DATETIME NULL",
+                "ALTER TABLE bla_calendar_objects ADD COLUMN all_day TINYINT NOT NULL DEFAULT 0",
+                "ALTER TABLE bla_calendar_objects ADD COLUMN remind_at DATETIME NULL",
+                "ALTER TABLE bla_calendar_objects ADD COLUMN reminder_sent_at DATETIME NULL",
+                $idx . 'idx_calendar_objects_range ON bla_calendar_objects (calendar_id, start_at, end_at)',
+                $idx . 'idx_calendar_objects_remind ON bla_calendar_objects (remind_at, reminder_sent_at)',
+                // Denormalised from the raw vCard text, so the contacts list can sort/search without parsing.
+                "ALTER TABLE bla_contacts ADD COLUMN fn VARCHAR(255) NOT NULL DEFAULT ''",
+                $idx . 'idx_contacts_fn ON bla_contacts (addressbook_id, fn)',
+            ],
+            6 => [
+                // Encrypted backup archives (see app/lib/Backup.php). The passphrase and settings live
+                // in bla_meta's 'settings' blob alongside everything else Settings.php manages.
+                "CREATE TABLE IF NOT EXISTS bla_backups (
+                    id $id,
+                    filename VARCHAR(255) NOT NULL DEFAULT '',
+                    kind VARCHAR(16) NOT NULL DEFAULT 'manual',
+                    size_bytes BIGINT NOT NULL DEFAULT 0,
+                    status VARCHAR(16) NOT NULL DEFAULT 'ok',
+                    error VARCHAR(512) NOT NULL DEFAULT '',
+                    created_at DATETIME NOT NULL
+                )$tail",
+                $idx . 'idx_backups_created ON bla_backups (created_at)',
             ],
             default => [],
         };

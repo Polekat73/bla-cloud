@@ -6,13 +6,18 @@ namespace BlaCloud;
 use BlaCloud\Controllers\AccountController;
 use BlaCloud\Controllers\AdminController;
 use BlaCloud\Controllers\AdminSettingsController;
+use BlaCloud\Controllers\BackupController;
+use BlaCloud\Controllers\EncryptionController;
 use BlaCloud\Controllers\LinkController;
 use BlaCloud\Controllers\ShareController;
 use BlaCloud\Controllers\UsersController;
+use BlaCloud\Controllers\AppsController;
 use BlaCloud\Controllers\AuthController;
+use BlaCloud\Controllers\DavController;
 use BlaCloud\Controllers\FilesController;
 use BlaCloud\Controllers\SettingsController;
 use BlaCloud\Controllers\SetupController;
+use BlaCloud\Controllers\SyncController;
 use BlaCloud\Controllers\TrashController;
 
 final class App
@@ -50,6 +55,23 @@ final class App
         'admin'          => [AdminController::class, 'status'],
         'admin.settings' => [AdminSettingsController::class, 'index'],
         'admin.testmail' => [AdminSettingsController::class, 'testMail'],
+        'admin.backups'          => [BackupController::class, 'index'],
+        'admin.backups.enable'   => [BackupController::class, 'enable'],
+        'admin.backups.disable'  => [BackupController::class, 'disable'],
+        'admin.backups.rotate'   => [BackupController::class, 'rotatePassphrase'],
+        'admin.backups.run'      => [BackupController::class, 'runNow'],
+        'admin.backups.download' => [BackupController::class, 'download'],
+        'admin.backups.verify'   => [BackupController::class, 'verify'],
+        'admin.backups.restore'  => [BackupController::class, 'restore'],
+        'admin.backups.delete'   => [BackupController::class, 'delete'],
+        'admin.encryption'          => [EncryptionController::class, 'index'],
+        'admin.encryption.enable'   => [EncryptionController::class, 'enable'],
+        'admin.encryption.pause'    => [EncryptionController::class, 'pause'],
+        'admin.encryption.resume'   => [EncryptionController::class, 'resume'],
+        'admin.encryption.migrate-encrypt' => [EncryptionController::class, 'migrateEncrypt'],
+        'admin.encryption.migrate-decrypt' => [EncryptionController::class, 'migrateDecrypt'],
+        'admin.apps'         => [AppsController::class, 'index'],
+        'admin.apps.toggle'  => [AppsController::class, 'toggle'],
         'users'          => [UsersController::class, 'index'],
         'users.create'   => [UsersController::class, 'create'],
         'users.action'   => [UsersController::class, 'action'],
@@ -66,6 +88,9 @@ final class App
         'shared'         => [ShareController::class, 'sharedWithMe'],
         'shared-by-me'   => [ShareController::class, 'sharedByMe'],
         's'              => [LinkController::class, 'open'],
+        'sync'           => [SyncController::class, 'index'],
+        'sync.apppasswords.create' => [SyncController::class, 'createAppPassword'],
+        'sync.apppasswords.delete' => [SyncController::class, 'deleteAppPassword'],
     ];
 
     public static function run(): void
@@ -79,6 +104,18 @@ final class App
         }
 
         Schema::ensureUpToDate();
+
+        // WebDAV/CalDAV/CardDAV: separate, stateless entry point (no cookies, HTTP Basic + app passwords).
+        $path = Request::path();
+        if ($path === '/.well-known/caldav' || $path === '/.well-known/carddav') {
+            header('Location: ' . Request::basePath() . '/dav/', true, 302);
+            return;
+        }
+        if ($path === '/dav' || str_starts_with($path, '/dav/')) {
+            (new DavController())->handle();
+            return;
+        }
+
         Session::start();
         if (random_int(1, 100) === 1) {
             Maintenance::run();
@@ -90,12 +127,13 @@ final class App
         if ($route === '') {
             View::redirect(Auth::user() ? 'files' : 'login');
         }
-        if (!isset(self::ROUTES[$route])) {
+        $routes = self::ROUTES + Apps::routes();
+        if (!isset($routes[$route])) {
             http_response_code(404);
             View::render('error', ['title' => 'Page not found', 'message' => 'That page does not exist.']);
             return;
         }
-        [$class, $method] = self::ROUTES[$route];
+        [$class, $method] = $routes[$route];
         (new $class())->$method();
     }
 }
